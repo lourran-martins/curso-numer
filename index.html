@@ -2024,30 +2024,96 @@ function initEvents() {
       if (file.name.endsWith(".json")) {
         const text = await file.text();
         const payload = JSON.parse(text);
-        if (payload.settings) {
+        
+        // 1. Formato Nativo Padrão
+        if (payload.settings && payload.files) {
           state = Object.assign(state, payload);
           renderAll();
           await saveLocal();
-          addActivity("Projeto completo importado via JSON");
+          addActivity("Projeto completo importado via JSON nativo");
           notify("Projeto importado com sucesso");
+        } 
+        // 2. Formato Externo (NotebookLM / Google Takeout e derivados)
+        else if (payload.documents || payload.codes) {
+          let docsCount = 0;
+          let codesCount = 0;
+          
+          if (payload.documents && Array.isArray(payload.documents)) {
+            payload.documents.forEach(doc => {
+              const content = doc.text || doc.originalText || "";
+              if (content.trim()) {
+                const exists = state.files.findIndex(f => f.name === doc.name);
+                const record = {
+                  name: doc.name || "Doc_Importado_" + Math.random().toString(36).substring(7),
+                  size: content.length,
+                  type: doc.mimeType || "text/plain",
+                  content: content,
+                  isSheet: false,
+                  sheetData: []
+                };
+                if (exists >= 0) state.files[exists] = record;
+                else state.files.push(record);
+                docsCount++;
+              }
+            });
+          }
+          
+          if (payload.codes && Array.isArray(payload.codes)) {
+            payload.codes.forEach(c => {
+              const wordsArray = c.keywords || c.words || [];
+              if (c.name && wordsArray.length > 0) {
+                if (!state.codes.some(existing => normalize(existing.name) === normalize(c.name))) {
+                  state.codes.push({
+                    id: c.id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+                    name: c.name,
+                    description: c.description || "",
+                    words: wordsArray
+                  });
+                  codesCount++;
+                }
+              }
+            });
+          }
+          
+          if (payload.name) state.settings.projectName = payload.name;
+          
+          renderAll();
+          await saveLocal();
+          addActivity(`Arquitetura Externa processada: ${docsCount} fontes e ${codesCount} códigos`);
+          notify("Dados externos extraídos e importados");
         } else {
-          notify("Arquivo de projeto inválido", true);
+          notify("Estrutura de JSON não reconhecida ou incompatível", true);
         }
-      } else if (file.name.match(/\.(xlsx|xls|csv)$/i)) {
+      } 
+      else if (file.name.match(/\.(xlsx|xls|csv)$/i)) {
         const buffer = await file.arrayBuffer();
         const workbook = XLSX.read(buffer, {type: 'array'});
-        let imported = false;
+        let importedCodeOrMatrix = false;
+        
         for (let sheetName of workbook.SheetNames) {
-          const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+          const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
           if (!data.length) continue;
-          const keys = Object.keys(data[0]).map(k => String(k).toLowerCase());
           
-          if (keys.includes("nome") || keys.includes("name") || keys.includes("palavras") || keys.includes("words")) {
+          // Análise heurística passiva das chaves estruturais
+          const keys = Object.keys(data[0]).map(k => String(k).toLowerCase().trim());
+          
+          const isMatrix = keys.some(k => k === "termo" || k === "term" || k.includes("matriz"));
+          const isCodes = keys.some(k => k === "nome" || k === "name" || k.includes("código") || k.includes("codigo") || k.includes("palavra") || k.includes("word"));
+
+          if (isCodes && !isMatrix) {
             let added = 0;
             data.forEach(row => {
-              const name = row.name || row.nome || row.Name || row.Nome || row["Nome do código"];
-              const desc = row.description || row.descricao || row.descrição || row.Description || row["Descrição"];
-              const wordsStr = row.words || row.palavras || row.Words || row.Palavras || row["Palavras associadas"];
+              const rowKeys = Object.keys(row);
+              const findKey = (str) => rowKeys.find(k => k.toLowerCase().includes(str));
+              
+              const nameKey = findKey("nome") || findKey("name") || findKey("código") || findKey("codigo");
+              const descKey = findKey("descri") || findKey("description");
+              const wordsKey = findKey("palavra") || findKey("word") || findKey("keyword");
+              
+              const name = nameKey ? row[nameKey] : null;
+              const desc = descKey ? row[descKey] : "";
+              const wordsStr = wordsKey ? row[wordsKey] : null;
+              
               if(name && wordsStr) {
                 const words = String(wordsStr).split(",").map(w => w.trim()).filter(Boolean);
                 if(!state.codes.some(c => normalize(c.name) === normalize(name))) {
@@ -2056,23 +2122,42 @@ function initEvents() {
                 }
               }
             });
-            if(added > 0) { notify(`${added} códigos importados`); imported = true; addActivity(`${added} códigos importados de planilha`); }
+            if(added > 0) { 
+              notify(`${added} códigos processados`); 
+              importedCodeOrMatrix = true; 
+              addActivity(`${added} códigos importados via CSV/Planilha`); 
+            }
           } 
           
-          if (keys.includes("termo") || keys.includes("term")) {
+          if (isMatrix) {
             state.lastMatrix = data;
-            $("matrixResults").innerHTML = `<p><span class="badge success">Matriz Importada</span></p><div class="table-wrap"><table><thead><tr>${Object.keys(data[0]).map(key => `<th>${escapeHtml(key)}</th>`).join("")}</tr></thead><tbody>${data.map(row => `<tr>${Object.values(row).map((value, i) => i === 0 ? `<td><strong>${escapeHtml(value)}</strong></td>` : `<td>${escapeHtml(value)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
-            notify("Matriz importada com sucesso");
-            addActivity("Matriz de dados importada");
-            imported = true;
+            $("matrixResults").innerHTML = `<p><span class="badge success">Matriz Analítica Importada</span></p><div class="table-wrap"><table><thead><tr>${Object.keys(data[0]).map(key => `<th>${escapeHtml(key)}</th>`).join("")}</tr></thead><tbody>${data.map(row => `<tr>${Object.values(row).map((value, i) => i === 0 ? `<td><strong>${escapeHtml(value)}</strong></td>` : `<td>${escapeHtml(value)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+            notify("Matriz injetada com sucesso");
+            addActivity(`Matriz de coocorrência injetada: ${file.name}`);
+            importedCodeOrMatrix = true;
           }
         }
-        if (!imported) notify("Formato não reconhecido para Códigos/Matrizes.", true);
+        
+        if (!importedCodeOrMatrix) {
+          // Fallback: se não for Código nem Matriz, assimila na área de Dados/Planilhas para uso matemático comum
+          const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+          state.files.push({
+            name: file.name,
+            size: file.size,
+            type: file.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            content: sheetData.map(r => Object.values(r).join(" ")).join("\n"),
+            isSheet: true,
+            sheetData: sheetData
+          });
+          notify("Planilha alocada para Análise de Dados Gerais");
+          addActivity(`Planilha genérica de dados lida: ${file.name}`);
+        }
         renderAll();
         await saveLocal();
       }
     } catch (err) {
-      notify("Erro ao ler o arquivo selecionado", true);
+      console.error(err);
+      notify("Erro ao processar a importação selecionada", true);
     }
     e.target.value = "";
   });
