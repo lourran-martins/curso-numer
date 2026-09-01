@@ -144,6 +144,7 @@ header {
   background: var(--primary);
   color: white;
   font-size: 1.3rem;
+  transition: background 0.3s;
 }
 
 
@@ -398,6 +399,22 @@ th {
 }
 
 
+/* Novos Estilos Auxiliares (Hierarquia e Cases) */
+.node-child {
+  margin-left: 2rem;
+  border-left-color: var(--success);
+}
+.tag-color {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+.case-card {
+  border-left: 4px solid #6c42d9;
+}
+
+
 pre {
   white-space: pre-wrap;
   word-break: break-word;
@@ -544,9 +561,9 @@ footer {
 <header>
   <div class="header-inner">
     <div class="brand">
-      <div class="brand-icon">▦</div>
+      <div class="brand-icon" id="brandIconBox">▦</div>
       <div>
-        <h1>Curso & Numeração</h1>
+        <h1 id="brandTitle">Curso & Numeração</h1>
         <small>Projeto local, offline e persistente</small>
       </div>
     </div>
@@ -567,12 +584,15 @@ footer {
     <button data-view="overview" class="active">Visão geral</button>
     <button data-view="sources">Fontes offline</button>
     <button data-view="search">Pesquisa</button>
-    <button data-view="codes">Códigos</button>
+    <button data-view="codes">Códigos & Nós</button>
+    <button data-view="cases">Cases & Atributos</button>
+    <button data-view="memos">Memos</button>
+    <button data-view="autocode">Inteligência Qualitativa</button>
     <button data-view="cross">Cruzamento</button>
     <button data-view="matrix">Matriz NVivo</button>
     <button data-view="compat">Compatibilidade</button>
-    <button data-view="sheets">Planilhas Excel/CSV</button>
-    <button data-view="charts">Gráficos & Relatórios</button>
+    <button data-view="sheets">Planilhas</button>
+    <button data-view="charts">Gráficos</button>
     <button data-view="data">Dados</button>
     <button data-view="settings">Configuração</button>
   </nav>
@@ -607,7 +627,7 @@ footer {
 
 
       <div class="card">
-        <div class="muted">Códigos</div>
+        <div class="muted">Códigos & Nós</div>
         <div class="stat" id="statCodes">0</div>
       </div>
     </div>
@@ -696,19 +716,24 @@ footer {
   <section class="view" id="codes">
     <div class="grid two">
       <div class="card">
-        <h2>Códigos analíticos</h2>
-        <p class="muted">Crie categorias, associe palavras e reutilize a codificação no corpus carregado.</p>
+        <h2>Códigos e Nós (Nodes)</h2>
+        <p class="muted">Crie categorias hierárquicas, associe palavras e reutilize a codificação no corpus carregado.</p>
 
 
         <div class="field">
-          <label for="codeName">Nome do código</label>
+          <label for="codeName">Nome do código / nó</label>
           <input id="codeName" placeholder="Ex.: metodologia">
+        </div>
+
+        <div class="field">
+          <label for="codeParent">Nó Pai (Opcional - Hierarquia)</label>
+          <select id="codeParent"><option value="">Nenhum (Nó Principal)</option></select>
         </div>
 
 
         <div class="field">
           <label for="codeDescription">Descrição</label>
-          <textarea id="codeDescription" placeholder="Explique o significado deste código"></textarea>
+          <textarea id="codeDescription" placeholder="Explique o significado deste código" style="min-height:70px"></textarea>
         </div>
 
 
@@ -723,8 +748,90 @@ footer {
 
 
       <div class="card">
-        <h3>Códigos cadastrados</h3>
+        <h3>Livro de Códigos (Codebook)</h3>
         <div id="codesList" class="empty">Nenhum código cadastrado.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NOVA SESSÃO: CASES E ATRIBUTOS -->
+  <section class="view" id="cases">
+    <div class="grid two">
+      <div class="card">
+        <h2>Consolidações Cotidianas (Cases)</h2>
+        <p class="muted">Crie unidades de análise (participantes, instituições, locais) e associe classificações demográficas.</p>
+
+        <div class="field">
+          <label for="caseName">Nome do Caso / Participante</label>
+          <input id="caseName" placeholder="Ex.: Entrevistado 01, Escola Municipal...">
+        </div>
+
+        <div class="field">
+          <label for="caseAttributes">Atributos (Chave: Valor separados por vírgula)</label>
+          <input id="caseAttributes" placeholder="Idade: 34, Sexo: M, Profissão: Professor">
+        </div>
+
+        <button id="addCaseBtn">Cadastrar Consolidação</button>
+      </div>
+
+      <div class="card">
+        <h3>Lista de Cases</h3>
+        <div id="casesList" class="empty">Nenhum case cadastrado.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NOVA SESSÃO: MEMOS -->
+  <section class="view" id="memos">
+    <div class="grid two">
+      <div class="card">
+        <h2>Notas (Memos) e Diários de Campo</h2>
+        <p class="muted">Espaço integrado para insights reflexivos e construção de trilhas de auditoria metodológica.</p>
+
+        <div class="field">
+          <label for="memoTitle">Título da Nota</label>
+          <input id="memoTitle" placeholder="Ex.: Reflexão sobre a Entrevista 02">
+        </div>
+
+        <div class="field">
+          <label for="memoContent">Conteúdo do Diário / Anotação</label>
+          <textarea id="memoContent" placeholder="Escreva suas percepções teóricas e metodológicas aqui..." style="min-height: 150px;"></textarea>
+        </div>
+
+        <button id="addMemoBtn">Salvar Nota Metodológica</button>
+      </div>
+
+      <div class="card">
+        <h3>Trilha de Auditoria (Memos Salvos)</h3>
+        <div id="memosList" class="empty">Nenhuma anotação registrada.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NOVA SESSÃO: INTELIGÊNCIA QUALITATIVA -->
+  <section class="view" id="autocode">
+    <div class="card">
+      <h2>Inteligência Qualitativa Avançada</h2>
+      <p class="muted">Classifique emoções automaticamente ou encontre os temas mais recorrentes ignorando palavras de descarte.</p>
+
+      <div class="grid two">
+        <div class="card" style="box-shadow:none; border-color:var(--border)">
+          <h3>Codificação Automática</h3>
+          <p class="muted" style="font-size:0.9rem">Identifica temas e estruturas nos textos, descontando stopwords e gerando Códigos automaticamente.</p>
+          <div class="toolbar">
+            <button id="runAutoCodeBtn">Extrair Temas Recorrentes</button>
+          </div>
+          <div id="autoCodeResults" class="empty" style="padding:0.5rem">Aguardando execução.</div>
+        </div>
+
+        <div class="card" style="box-shadow:none; border-color:var(--border)">
+          <h3>Análise de Sentimento</h3>
+          <p class="muted" style="font-size:0.9rem">Avalia o teor emocional de cada fonte (Positivo, Negativo, Neutro ou Misto) via léxico integrado.</p>
+          <div class="toolbar">
+            <button id="runSentimentBtn">Analisar Sentimentos</button>
+          </div>
+          <div id="sentimentResults" class="empty" style="padding:0.5rem">Aguardando execução.</div>
+        </div>
       </div>
     </div>
   </section>
@@ -889,18 +996,23 @@ footer {
   <section class="view" id="settings">
     <div class="grid two">
       <div class="card">
-        <h2>Configuração</h2>
+        <h2>Configuração Geral e de Projetos</h2>
 
 
         <div class="field">
-          <label for="projectSelect">Gerenciador de Projetos</label>
+          <label for="projectSelect">Gerenciador de Temas / Projetos</label>
           <select id="projectSelect"></select>
         </div>
 
 
         <div class="field">
-          <label for="projectName">Criar / Renomear Projeto</label>
+          <label for="projectName">Criar / Renomear Projeto Atual</label>
           <input id="projectName" value="Curso & Numeração Offline">
+        </div>
+
+        <div class="field">
+          <label for="projectThemeColor">Etiqueta de Cor do Projeto</label>
+          <input type="color" id="projectThemeColor" value="#1f6feb" style="padding: 0; height: 40px; cursor: pointer;">
         </div>
 
 
@@ -915,6 +1027,15 @@ footer {
 
 
       <div class="card">
+        <h3>Algoritmo de Descarte (Stopwords)</h3>
+        <p class="muted">Calcula o total de palavras comuns de todos os documentos que não devem ter peso de coocorrência (ex: artigos, pronomes).</p>
+        <div class="toolbar">
+          <button class="secondary" id="calcStopwordsBtn">Calcular/Atualizar Descarte Global</button>
+        </div>
+        <p id="stopwordsDisplay" class="muted" style="font-size: 0.85rem; margin-top: 10px;">Descartes ativos: Nenhum.</p>
+
+        <hr style="border:0; border-top:1px solid var(--border); margin: 1.5rem 0;">
+
         <h3>Manutenção do cache</h3>
         <p id="cacheInfo" class="muted">Os projetos são salvos em pastas dedicadas no IndexedDB do aparelho.</p>
 
@@ -950,13 +1071,24 @@ const DB_VERSION = 1;
 const STORE = "projetos";
 
 
+// Léxico de Sentimentos Padrão (Offline)
+const SENTIMENT_LEXICON = {
+  pos: ["bom","otimo","excelente","maravilhoso","positivo","progresso","amor","paz","justica","alegria","feliz","sucesso","vitoria","melhoria","seguro","seguranca","esperanca","vida","saude","direito","verdade","solucao"],
+  neg: ["ruim","pessimo","mau","triste","morte","matar","assassinato","violencia","crime","dor","sofrimento","corrupcao","medo","odio","guerra","roubo","trafico","milicia","fuzil","arma","desaparecimento","criminoso","bandido","ilegal","injustica","golpe","vitima","quadrilha"]
+};
+
+
 let state = {
   files: [],
   codes: [],
+  cases: [], // Novo: Consolidações Cotidianas
+  memos: [], // Novo: Diários de Campo / Trilhas de Auditoria
   activities: [],
   settings: {
     projectName: "Curso & Numeração Offline",
-    maxPreview: 8000
+    maxPreview: 8000,
+    projectColor: "#1f6feb", // Novo: Cor do projeto
+    stopwords: [] // Novo: Palavras descartadas
   },
   lastCross: [],
   lastMatrix: [],
@@ -1124,6 +1256,8 @@ function saveLocal() {
       projectName: state.settings.projectName,
       files: state.files,
       codes: state.codes,
+      cases: state.cases || [], // Garantia de acoplamento dos novos dados
+      memos: state.memos || [],
       activities: state.activities,
       settings: state.settings
     };
@@ -1210,6 +1344,7 @@ function toCsv(rows) {
 
 function getAllTerms() {
   const terms = [];
+  const stops = state.settings.stopwords || [];
 
 
   for (const code of state.codes) {
@@ -1225,7 +1360,9 @@ function getAllTerms() {
 
   for (const file of state.files) {
     for (const word of tokenize(file.content)) {
-      common.set(word, (common.get(word) || 0) + 1);
+      if(!stops.includes(word)) {
+        common.set(word, (common.get(word) || 0) + 1);
+      }
     }
   }
 
@@ -1280,6 +1417,13 @@ function renderStats() {
   $("projectStatus").textContent = state.files.length
     ? `${state.files.length} fonte(s) carregada(s), ${words.toLocaleString("pt-BR")} palavras na pasta [${state.settings.projectName}].`
     : "Nenhuma fonte carregada.";
+    
+  // Aplicar cor do projeto atual
+  if(state.settings.projectColor) {
+     $("brandIconBox").style.backgroundColor = state.settings.projectColor;
+     $("brandTitle").textContent = state.settings.projectName;
+     $("projectThemeColor").value = state.settings.projectColor;
+  }
 }
 
 
@@ -1347,31 +1491,110 @@ function renderSources() {
 
 function renderCodes() {
   const container = $("codesList");
+  const parentSelect = $("codeParent");
 
+  // Atualizar dropdown de hierarquia
+  parentSelect.innerHTML = '<option value="">Nenhum (Nó Principal)</option>' + 
+    state.codes.filter(c => !c.parentId).map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
 
   if (!state.codes.length) {
     container.innerHTML = '<div class="empty">Nenhum código cadastrado.</div>';
     return;
   }
 
+  // Lógica de renderização de Nós em Hierarquia
+  let html = "";
+  const parents = state.codes.filter(c => !c.parentId);
+  
+  parents.forEach((parent, index) => {
+    html += `
+      <div class="result">
+        <strong>${escapeHtml(parent.name)}</strong>
+        <div>${escapeHtml(parent.description || "Sem descrição")}</div>
+        <p style="margin-top: .5rem">
+          ${parent.words.map(word => `<span class="badge primary">${escapeHtml(word)}</span>`).join(" ")}
+        </p>
+        <button class="danger remove-code" style="margin-top: .5rem; font-size: .8rem" data-id="${parent.id}">Excluir código</button>
+      </div>
+    `;
+    
+    // Fill Children
+    const children = state.codes.filter(c => c.parentId === parent.id);
+    children.forEach(child => {
+      html += `
+        <div class="result node-child">
+          <strong>↳ ${escapeHtml(child.name)}</strong>
+          <div>${escapeHtml(child.description || "Sem descrição")}</div>
+          <p style="margin-top: .5rem">
+            ${child.words.map(word => `<span class="badge primary">${escapeHtml(word)}</span>`).join(" ")}
+          </p>
+          <button class="danger remove-code" style="margin-top: .5rem; font-size: .8rem" data-id="${child.id}">Excluir subcódigo</button>
+        </div>
+      `;
+    });
+  });
 
-  container.innerHTML = state.codes.map((code, index) => `
-    <div class="result">
-      <strong>${escapeHtml(code.name)}</strong>
-      <div>${escapeHtml(code.description || "Sem descrição")}</div>
-      <p style="margin-top: .5rem">
-        ${code.words.map(word => `<span class="badge primary">${escapeHtml(word)}</span>`).join(" ")}
-      </p>
-      <button class="danger remove-code" style="margin-top: .5rem; font-size: .8rem" data-index="${index}">Excluir código</button>
-    </div>
-  `).join("");
-
+  container.innerHTML = html;
 
   document.querySelectorAll(".remove-code").forEach(button => {
     button.addEventListener("click", () => {
-      const index = Number(button.dataset.index);
-      const removed = state.codes.splice(index, 1)[0];
-      addActivity(`Código removido: ${removed.name}`);
+      const id = button.dataset.id;
+      const index = state.codes.findIndex(c => c.id === id);
+      if(index > -1) {
+        const removed = state.codes.splice(index, 1)[0];
+        // Remover dependentes
+        state.codes = state.codes.filter(c => c.parentId !== id);
+        addActivity(`Código removido: ${removed.name}`);
+        renderAll();
+      }
+    });
+  });
+}
+
+function renderCases() {
+  const container = $("casesList");
+  if(!state.cases || !state.cases.length) {
+    container.innerHTML = '<div class="empty">Nenhum case cadastrado.</div>';
+    return;
+  }
+  
+  container.innerHTML = state.cases.map((c, idx) => `
+    <div class="result case-card">
+      <strong>${escapeHtml(c.name)}</strong>
+      <div class="muted" style="margin-top: 5px; font-size: 0.9rem;">
+        ${Object.keys(c.attributes).map(key => `<span class="badge" style="margin-right:4px;">${escapeHtml(key)}: <b>${escapeHtml(c.attributes[key])}</b></span>`).join("")}
+      </div>
+      <button class="danger remove-case" style="margin-top: .75rem; font-size: .8rem" data-index="${idx}">Excluir Case</button>
+    </div>
+  `).join("");
+  
+  document.querySelectorAll(".remove-case").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.cases.splice(btn.dataset.index, 1);
+      renderAll();
+    });
+  });
+}
+
+function renderMemos() {
+  const container = $("memosList");
+  if(!state.memos || !state.memos.length) {
+    container.innerHTML = '<div class="empty">Nenhuma anotação registrada.</div>';
+    return;
+  }
+  
+  container.innerHTML = state.memos.map((m, idx) => `
+    <div class="result" style="border-left-color: #f4b400; background: #fffdf5;">
+      <strong>${escapeHtml(m.title)}</strong>
+      <small class="muted">${m.date}</small>
+      <p style="white-space: pre-wrap; margin-top: 10px; font-size: 0.95rem;">${escapeHtml(m.content)}</p>
+      <button class="danger remove-memo" style="margin-top: .5rem; font-size: .8rem" data-index="${idx}">Excluir Nota</button>
+    </div>
+  `).join("");
+  
+  document.querySelectorAll(".remove-memo").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.memos.splice(btn.dataset.index, 1);
       renderAll();
     });
   });
@@ -1471,13 +1694,24 @@ function updateCompatCheckboxes() {
   `).join("");
 }
 
+function renderStopwords() {
+  const d = $("stopwordsDisplay");
+  if(state.settings.stopwords && state.settings.stopwords.length > 0) {
+    d.textContent = `Descartes ativos (${state.settings.stopwords.length} termos): ` + state.settings.stopwords.slice(0,15).join(", ") + "...";
+  } else {
+    d.textContent = "Descartes ativos: Nenhum.";
+  }
+}
 
 function renderAll() {
   renderStats();
   renderActivity();
   renderSources();
   renderCodes();
+  renderCases();
+  renderMemos();
   renderData();
+  renderStopwords();
   $("projectName").value = state.settings.projectName;
   $("maxPreview").value = state.settings.maxPreview;
 }
@@ -1578,6 +1812,7 @@ function executeSearch() {
 function addCode() {
   const name = $("codeName").value.trim();
   const description = $("codeDescription").value.trim();
+  const parentId = $("codeParent").value;
   const words = $("codeWords").value
     .split(",")
     .map(word => word.trim())
@@ -1590,14 +1825,15 @@ function addCode() {
   }
 
 
-  if (state.codes.some(code => normalize(code.name) === normalize(name))) {
-    notify("Já existe um código com esse nome", true);
+  if (state.codes.some(code => normalize(code.name) === normalize(name) && code.parentId === parentId)) {
+    notify("Já existe um código com esse nome nesta hierarquia", true);
     return;
   }
 
 
   state.codes.push({
     id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+    parentId: parentId || null,
     name,
     description,
     words
@@ -1607,12 +1843,50 @@ function addCode() {
   $("codeName").value = "";
   $("codeDescription").value = "";
   $("codeWords").value = "";
+  $("codeParent").value = "";
 
 
-  addActivity(`Código criado: ${name}`);
+  addActivity(`Código${parentId?' (filho)':''} criado: ${name}`);
   renderAll();
   saveLocal();
-  notify("Código criado");
+  notify("Código inserido no livro");
+}
+
+function addCase() {
+  const name = $("caseName").value.trim();
+  const attrsStr = $("caseAttributes").value.trim();
+  
+  if(!name) return notify("Informe o nome do Case", true);
+  
+  const attributes = {};
+  if(attrsStr) {
+    attrsStr.split(",").forEach(pair => {
+      const [k, v] = pair.split(":");
+      if(k && v) attributes[k.trim()] = v.trim();
+    });
+  }
+  
+  if(!state.cases) state.cases = [];
+  state.cases.push({ name, attributes });
+  
+  $("caseName").value = ""; $("caseAttributes").value = "";
+  addActivity(`Consolidação criada: ${name}`);
+  renderAll(); saveLocal(); notify("Case cadastrado com atributos.");
+}
+
+function addMemo() {
+  const title = $("memoTitle").value.trim();
+  const content = $("memoContent").value.trim();
+  if(!title || !content) return notify("Preencha título e conteúdo", true);
+  
+  if(!state.memos) state.memos = [];
+  state.memos.push({
+    title, content, date: new Date().toLocaleString("pt-BR")
+  });
+  
+  $("memoTitle").value = ""; $("memoContent").value = "";
+  addActivity(`Nota metodológica salva: ${title}`);
+  renderAll(); saveLocal(); notify("Memo adicionado à trilha.");
 }
 
 
@@ -1865,6 +2139,79 @@ function analyzeSheetData() {
   addActivity("Algoritmo de planilha Excel/CSV concluído");
 }
 
+function calcGlobalStopwords() {
+  if(!state.files.length) return notify("Carregue fontes para gerar descartes", true);
+  
+  const freq = {};
+  state.files.forEach(f => {
+    tokenize(f.content).forEach(w => freq[w] = (freq[w]||0)+1);
+  });
+  
+  // Hardcoded comuns no idioma
+  const hardcoded = ["o","a","os","as","um","uma","uns","umas","de","do","da","dos","das","em","no","na","nos","nas","por","para","com","sem","que","se","e","ou","mas","como","mais","ao","aos"];
+  
+  // Pegar as 30 palavras mais comuns estatisticamente que tenham tamanho <= 4 ou sejam muito óbvias
+  const statsStops = Object.keys(freq).sort((a,b) => freq[b]-freq[a]).slice(0,35).filter(w => w.length <= 4 || freq[w] > (state.files.length * 2));
+  
+  state.settings.stopwords = [...new Set([...hardcoded, ...statsStops])];
+  renderAll();
+  saveLocal();
+  notify("Algoritmo de descarte atualizado");
+  addActivity("Recálculo global de pesos e stopwords executado");
+}
+
+function runAutoCode() {
+  if(!state.files.length) return notify("Sem fontes para auto-codificação", true);
+  const terms = getAllTerms().slice(0, 8); // Pega os termos comuns já filtrados do descarte
+  
+  let added = 0;
+  terms.forEach(t => {
+    if(!state.codes.some(c => c.name === `Auto: ${t.label}`)) {
+      state.codes.push({
+        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+        parentId: null,
+        name: `Auto: ${t.label}`,
+        description: "Codificação automática gerada por frequência cruzada",
+        words: [t.label]
+      });
+      added++;
+    }
+  });
+  
+  $("autoCodeResults").innerHTML = `<span class="badge success">${added} códigos automáticos gerados com sucesso!</span> Verifique o livro de Códigos.`;
+  addActivity(`Codificação Automática: ${added} temas`);
+  renderAll(); saveLocal();
+}
+
+function runSentimentAnalysis() {
+  if(!state.files.length) return notify("Sem textos para analisar", true);
+  
+  const results = state.files.filter(f=>!f.isSheet).map(file => {
+    const tokens = tokenize(file.content);
+    let p = 0, n = 0;
+    tokens.forEach(w => {
+      if(SENTIMENT_LEXICON.pos.includes(w)) p++;
+      if(SENTIMENT_LEXICON.neg.includes(w)) n++;
+    });
+    
+    let tipo = "Neutro"; let cor = "primary";
+    if(p > n && p > 2) { tipo = "Positivo"; cor = "success"; }
+    else if(n > p && n > 2) { tipo = "Negativo"; cor = "danger"; }
+    else if(p > 0 && n > 0 && Math.abs(p-n) <= 2) { tipo = "Misto"; cor = "primary"; }
+    
+    return `<tr><td>${escapeHtml(file.name.substring(0,35))}</td><td>${p}</td><td>${n}</td><td><span class="badge ${cor}">${tipo}</span></td></tr>`;
+  });
+  
+  if(!results.length) return $("sentimentResults").innerHTML = "Apenas planilhas detectadas.";
+  
+  $("sentimentResults").innerHTML = `
+    <div class="table-wrap"><table>
+      <thead><tr><th>Fonte</th><th>Termos (+)</th><th>Termos (-)</th><th>Classificação</th></tr></thead>
+      <tbody>${results.join("")}</tbody>
+    </table></div>
+  `;
+  addActivity("Análise de Sentimento aplicada no corpus");
+}
 
 function renderChart() {
   const type = $("chartType").value;
@@ -1989,9 +2336,11 @@ function initEvents() {
 
   $("saveBtn").addEventListener("click", async () => {
     state.settings.projectName = $("projectName").value.trim() || "Projeto Sem Nome";
+    state.settings.projectColor = $("projectThemeColor").value;
     await saveLocal();
     addActivity("Projeto salvo na pasta virtual");
     notify("Pasta do projeto salva");
+    renderAll();
   });
 
 
@@ -2065,6 +2414,7 @@ function initEvents() {
                 if (!state.codes.some(existing => normalize(existing.name) === normalize(c.name))) {
                   state.codes.push({
                     id: c.id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+                    parentId: null,
                     name: c.name,
                     description: c.description || "",
                     words: wordsArray
@@ -2117,7 +2467,7 @@ function initEvents() {
               if(name && wordsStr) {
                 const words = String(wordsStr).split(",").map(w => w.trim()).filter(Boolean);
                 if(!state.codes.some(c => normalize(c.name) === normalize(name))) {
-                  state.codes.push({ id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), name: String(name), description: String(desc||""), words });
+                  state.codes.push({ id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), parentId: null, name: String(name), description: String(desc||""), words });
                   added++;
                 }
               }
@@ -2206,6 +2556,13 @@ function initEvents() {
 
 
   $("addCodeBtn").addEventListener("click", addCode);
+  $("addCaseBtn").addEventListener("click", addCase);
+  $("addMemoBtn").addEventListener("click", addMemo);
+  
+  $("runAutoCodeBtn").addEventListener("click", runAutoCode);
+  $("runSentimentBtn").addEventListener("click", runSentimentAnalysis);
+  $("calcStopwordsBtn").addEventListener("click", calcGlobalStopwords);
+  
   $("crossBtn").addEventListener("click", executeCross);
   $("matrixBtn").addEventListener("click", executeMatrix);
   $("compatBtn").addEventListener("click", calculateCompatibility);
@@ -2244,6 +2601,7 @@ function initEvents() {
   $("saveSettingsBtn").addEventListener("click", async () => {
     state.settings.projectName = $("projectName").value.trim() || "Curso & Numeração Offline";
     state.settings.maxPreview = Math.max(100, Number($("maxPreview").value) || 8000);
+    state.settings.projectColor = $("projectThemeColor").value;
     renderAll();
     await saveLocal();
     notify("Configuração e pasta do projeto salvas");
@@ -2268,6 +2626,9 @@ function initEvents() {
       fontes: state.files.length,
       planilhasExcelCSV: state.files.filter(f=>f.isSheet).length,
       codigos: state.codes.length,
+      cases: (state.cases||[]).length,
+      memos: (state.memos||[]).length,
+      stopwords: (state.settings.stopwords||[]).length,
       palavras: state.files.reduce((sum, file) => sum + countWords(file.content), 0),
       armazenamento: navigator.storage ? "disponível" : "não confirmado",
       online: navigator.onLine,
@@ -2284,7 +2645,7 @@ function initEvents() {
   $("deleteProjectCacheBtn").addEventListener("click", async () => {
     if (!confirm(`Apagar os dados do projeto atual [${state.settings.projectName}]?`)) return;
     await deleteProjectLocal(state.settings.projectName);
-    state.files = []; state.codes = []; state.activities = [];
+    state.files = []; state.codes = []; state.activities = []; state.cases = []; state.memos = [];
     renderAll();
     await updateProjectsDropdown();
     notify("Cache do projeto apagado");
@@ -2294,7 +2655,7 @@ function initEvents() {
   $("deleteCacheBtn").addEventListener("click", async () => {
     if (!confirm("Tem certeza que deseja apagar TODO o cache (Todos os Projetos)?")) return;
     await clearLocal();
-    state.files = []; state.codes = []; state.activities = [];
+    state.files = []; state.codes = []; state.activities = []; state.cases = []; state.memos = [];
     state.settings.projectName = "Novo Projeto";
     renderAll();
     await updateProjectsDropdown();
@@ -2347,7 +2708,7 @@ async function init() {
       }
     }
     
-    addActivity("Curso & Numeração Offline iniciado com Matemática Analítica");
+    addActivity("Curso & Numeração Offline com Inteligência Qualitativa");
   } catch (error) {
     notify("IndexedDB indisponível neste navegador", true);
   }
