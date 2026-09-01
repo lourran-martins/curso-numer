@@ -556,6 +556,8 @@ footer {
       <button class="secondary" id="themeBtn">Tema</button>
       <button class="secondary" id="saveBtn">Salvar projeto</button>
       <button class="secondary" id="restoreBtn">Restaurar</button>
+      <button class="secondary" id="importDataBtn">Importar</button>
+      <input type="file" id="importDataFile" accept=".csv,.xlsx,.xls,.json" style="display:none">
       <button class="secondary" id="pdfBtn">Exportar PDF</button>
     </div>
   </div>
@@ -2013,6 +2015,67 @@ function initEvents() {
 
 
   $("pdfBtn").addEventListener("click", exportPDF);
+
+  $("importDataBtn").addEventListener("click", () => $("importDataFile").click());
+  $("importDataFile").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      if (file.name.endsWith(".json")) {
+        const text = await file.text();
+        const payload = JSON.parse(text);
+        if (payload.settings) {
+          state = Object.assign(state, payload);
+          renderAll();
+          await saveLocal();
+          addActivity("Projeto completo importado via JSON");
+          notify("Projeto importado com sucesso");
+        } else {
+          notify("Arquivo de projeto inválido", true);
+        }
+      } else if (file.name.match(/\.(xlsx|xls|csv)$/i)) {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, {type: 'array'});
+        let imported = false;
+        for (let sheetName of workbook.SheetNames) {
+          const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+          if (!data.length) continue;
+          const keys = Object.keys(data[0]).map(k => String(k).toLowerCase());
+          
+          if (keys.includes("nome") || keys.includes("name") || keys.includes("palavras") || keys.includes("words")) {
+            let added = 0;
+            data.forEach(row => {
+              const name = row.name || row.nome || row.Name || row.Nome || row["Nome do código"];
+              const desc = row.description || row.descricao || row.descrição || row.Description || row["Descrição"];
+              const wordsStr = row.words || row.palavras || row.Words || row.Palavras || row["Palavras associadas"];
+              if(name && wordsStr) {
+                const words = String(wordsStr).split(",").map(w => w.trim()).filter(Boolean);
+                if(!state.codes.some(c => normalize(c.name) === normalize(name))) {
+                  state.codes.push({ id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), name: String(name), description: String(desc||""), words });
+                  added++;
+                }
+              }
+            });
+            if(added > 0) { notify(`${added} códigos importados`); imported = true; addActivity(`${added} códigos importados de planilha`); }
+          } 
+          
+          if (keys.includes("termo") || keys.includes("term")) {
+            state.lastMatrix = data;
+            $("matrixResults").innerHTML = `<p><span class="badge success">Matriz Importada</span></p><div class="table-wrap"><table><thead><tr>${Object.keys(data[0]).map(key => `<th>${escapeHtml(key)}</th>`).join("")}</tr></thead><tbody>${data.map(row => `<tr>${Object.values(row).map((value, i) => i === 0 ? `<td><strong>${escapeHtml(value)}</strong></td>` : `<td>${escapeHtml(value)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+            notify("Matriz importada com sucesso");
+            addActivity("Matriz de dados importada");
+            imported = true;
+          }
+        }
+        if (!imported) notify("Formato não reconhecido para Códigos/Matrizes.", true);
+        renderAll();
+        await saveLocal();
+      }
+    } catch (err) {
+      notify("Erro ao ler o arquivo selecionado", true);
+    }
+    e.target.value = "";
+  });
 
 
   $("fileInput").addEventListener("change", event => {
