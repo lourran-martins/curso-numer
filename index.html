@@ -2442,8 +2442,15 @@ function initEvents() {
         }
       } 
       else if (file.name.match(/\.(xlsx|xls|csv)$/i)) {
-        const buffer = await file.arrayBuffer();
-        const workbook = XLSX.read(buffer, {type: 'array'});
+                let workbook;
+        if (file.name.toLowerCase().endsWith('.csv')) {
+          const text = await file.text();
+          workbook = XLSX.read(text, {type: 'string'});
+        } else {
+          const buffer = await file.arrayBuffer();
+          workbook = XLSX.read(buffer, {type: 'array'});
+        }
+
         let importedCodeOrMatrix = false;
         
         for (let sheetName of workbook.SheetNames) {
