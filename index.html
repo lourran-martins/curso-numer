@@ -1728,9 +1728,15 @@ async function readSelectedFiles(fileList) {
       let sheetData = [];
 
 
-      if(isSheet) {
-        const buffer = await file.arrayBuffer();
-        const workbook = XLSX.read(buffer, {type: 'array'});
+            if(isSheet) {
+        let workbook;
+        if (file.name.toLowerCase().endsWith('.csv')) {
+          const text = await file.text();
+          workbook = XLSX.read(text, {type: 'string'});
+        } else {
+          const buffer = await file.arrayBuffer();
+          workbook = XLSX.read(buffer, {type: 'array'});
+        }
         const firstSheetName = workbook.SheetNames[0];
         sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
         content = sheetData.map(row => Object.values(row).join(" ")).join("\n");
