@@ -414,6 +414,15 @@ th {
   border-left: 4px solid #6c42d9;
 }
 
+/* Estilo para abas da super análise */
+.super-nav {
+  display: flex; gap: 0.5rem; overflow-x: auto; margin-bottom: 1rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem;
+}
+.super-nav button { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+.super-nav button.active, .super-nav button:hover { background: var(--primary); color: white; border-color: var(--primary); }
+.super-subview { display: none; }
+.super-subview.active { display: block; }
+
 
 pre {
   white-space: pre-wrap;
@@ -586,6 +595,7 @@ footer {
     <button data-view="search">Pesquisa</button>
     <button data-view="codes">Códigos & Nós</button>
     <button data-view="cases">Cases & Atributos</button>
+    <button data-view="superanalysis">Super Análise (Cases)</button>
     <button data-view="memos">Memos</button>
     <button data-view="autocode">Inteligência Qualitativa</button>
     <button data-view="cross">Cruzamento</button>
@@ -777,6 +787,74 @@ footer {
       <div class="card">
         <h3>Lista de Cases</h3>
         <div id="casesList" class="empty">Nenhum case cadastrado.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SUPERABA DE ANÁLISE TEXTUAL DOS CASES -->
+  <section class="view" id="superanalysis">
+    <div class="card">
+      <h2>Super Análise Textual (Cases & Atributos)</h2>
+      <p class="muted">Módulo mega-avançado de intersecção, ranqueamento, coeficiência de proximidade e compatibilidade entre todos os Cases cadastrados.</p>
+
+      <div class="super-nav" id="superNavButtons">
+        <button data-target="sa-pontuacao" class="active">1. Fontes & Proximidade</button>
+        <button data-target="sa-relacoes">2. Relações Aleatórias (25%)</button>
+        <button data-target="sa-atributos">3. Atributos Comuns</button>
+        <button data-target="sa-compat">4. Compatibilidade Geral</button>
+        <button data-target="sa-resumo">5. Resumo Interativo</button>
+        <button data-target="sa-graficos">6. Matrizes e Gráficos</button>
+      </div>
+
+      <div class="toolbar" style="margin-bottom: 1.5rem;">
+        <button id="runSuperAnalysisBtn">Executar Todos os Cálculos</button>
+        <button class="secondary" id="exportSuperCsvBtn">Exportar Relatório Geral (CSV)</button>
+      </div>
+
+      <!-- Ponto 1 -->
+      <div id="sa-pontuacao" class="super-subview active">
+        <div id="sa1-results" class="empty">Execute a análise para calcular a proximidade e repetição de nomes de Cases nas fontes.</div>
+      </div>
+      <!-- Ponto 2 -->
+      <div id="sa-relacoes" class="super-subview">
+        <div id="sa2-results" class="empty">Execute a análise para visualizar a relação entre Cases randômicos (até 25%).</div>
+      </div>
+      <!-- Ponto 3 -->
+      <div id="sa-atributos" class="super-subview">
+        <div id="sa3-results" class="empty">Execute a análise para tabular atributos comuns segundo as fontes individuais e totais.</div>
+      </div>
+      <!-- Ponto 4 -->
+      <div id="sa-compat" class="super-subview">
+        <div id="sa4-results" class="empty">Execute a análise para ver a compatibilidade global de atributos.</div>
+      </div>
+      <!-- Ponto 5 -->
+      <div id="sa-resumo" class="super-subview">
+        <div class="field">
+          <label>Selecione Cases e/ou Atributos para Resumo Automático:</label>
+          <div id="sa5-selectors" class="muted" style="max-height: 150px; overflow-y: auto; background: var(--panel-2); padding: 10px; border-radius: 8px;">Nenhum dado calculado ainda.</div>
+        </div>
+        <button id="sa5-generateBtn" class="secondary">Gerar Texto Automático</button>
+        <div id="sa5-results" style="margin-top: 1rem;"></div>
+      </div>
+      <!-- Ponto 6 -->
+      <div id="sa-graficos" class="super-subview">
+        <div class="grid two">
+          <div class="field">
+            <label>Tipo de Gráfico</label>
+            <select id="sa6-chartType">
+              <option value="bar">Barra (Relações)</option>
+              <option value="pie">Pizza (Atributos Comuns)</option>
+              <option value="line">Linha (Compatibilidade)</option>
+            </select>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="sa6-drawBtn" style="width: 100%;">Desenhar Gráfico de Intersecção</button>
+          </div>
+        </div>
+        <div class="chart-wrapper" style="height: 350px;">
+          <canvas id="superChart"></canvas>
+        </div>
       </div>
     </div>
   </section>
@@ -1098,6 +1176,8 @@ let state = {
 
 let db;
 let activeChart = null;
+let superActiveChart = null;
+let superAnalysisData = null; // Armazena estado dos 4 pontos
 
 
 function $(id) {
@@ -1172,7 +1252,7 @@ function addActivity(message) {
 }
 
 
-// Criptografia Simulada
+// Criptografia e Verificação
 function initCrypto() {
   const storedHash = localStorage.getItem("cn_crypto_hash");
   const modal = $("cryptoModal");
@@ -1212,6 +1292,25 @@ function initCrypto() {
       }
     }
   });
+}
+
+// Interceptador para ações sensíveis (Salvar, Importar, Excluir Backup)
+async function verifyPasswordAction() {
+  const storedHash = localStorage.getItem("cn_crypto_hash");
+  if (!storedHash) return true;
+  
+  const val = prompt("Ação restrita. Digite a senha criptografada:");
+  if (val === null) return false;
+  
+  let hash = 0;
+  for (let i = 0; i < val.length; i++) {
+    hash = ((hash << 5) - hash) + val.charCodeAt(i);
+    hash |= 0;
+  }
+  if (hash.toString() === storedHash) return true;
+  
+  notify("Acesso negado. Senha incorreta.", true);
+  return false;
 }
 
 
@@ -1896,6 +1995,184 @@ function addMemo() {
 }
 
 
+/* === START SUPER ANÁLISE (4 PONTOS) === */
+function runSuperAnalysis() {
+  if (!state.cases || state.cases.length === 0 || !state.files || state.files.length === 0) {
+    notify("É necessário ter Fontes e Cases cadastrados para a Super Análise.", true);
+    return;
+  }
+  
+  superAnalysisData = {
+    ponto1: [], ponto2: [], ponto3: {}, ponto4: []
+  };
+
+  // PONTO 1: Fontes e Proximidade de Cases
+  const point1Html = state.cases.map(c => {
+    const tokens = tokenize(c.name);
+    let totalScore = 0;
+    
+    const fScores = state.files.map(f => {
+      let matchedTokens = 0;
+      let repeats = 0;
+      tokens.forEach(tk => {
+        let occ = countOccurrences(f.content, tk);
+        if (occ > 0) { matchedTokens++; repeats += occ; }
+      });
+      // Coeficiente simplificado
+      let coef = matchedTokens > 0 ? (matchedTokens / tokens.length) * repeats : 0;
+      totalScore += coef;
+      
+      superAnalysisData.ponto1.push({ Case: c.name, Fonte: f.name, Fragmentos: matchedTokens, Repeticoes: repeats, Coeficiente: coef });
+      return `<li>${escapeHtml(f.name.substring(0,30))}... - Coef: ${coef.toFixed(2)}</li>`;
+    }).filter(str => !str.includes("Coef: 0.00"));
+    
+    return `
+      <div class="result case-card">
+        <strong>${escapeHtml(c.name)} - Rank Geral: ${totalScore.toFixed(2)}</strong>
+        <ul style="margin:0; padding-left:20px; font-size:0.9rem;">${fScores.length ? fScores.join("") : "Nenhuma fonte relevante"}</ul>
+      </div>`;
+  }).join("");
+  $("sa1-results").innerHTML = point1Html;
+
+  // PONTO 2: Relação Aleatória entre Cases (Máx 25%)
+  const maxRel = Math.max(1, Math.floor(state.cases.length * 0.25));
+  const point2Html = state.cases.map((c, i) => {
+    let randCases = [...state.cases].filter((_, idx) => idx !== i).sort(() => 0.5 - Math.random()).slice(0, maxRel);
+    
+    let relHtml = randCases.map(rc => {
+      // Calcular similaridade de rank na fonte 1 (simplificação para aproximação de ranking cruzado)
+      let sim = 0;
+      let sharedAttr = Object.keys(c.attributes).filter(k => rc.attributes[k] && rc.attributes[k] === c.attributes[k]).length;
+      superAnalysisData.ponto2.push({ CaseA: c.name, CaseB: rc.name, AtributosEmComum: sharedAttr });
+      return `<li>Cruzou com <b>${escapeHtml(rc.name)}</b> (Atributos comuns: ${sharedAttr})</li>`;
+    }).join("");
+
+    return `
+      <div class="result case-card">
+        <strong>Case: ${escapeHtml(c.name)}</strong>
+        <p class="muted" style="margin:5px 0;">Relacionado aleatoriamente a ${randCases.length} cases (Até 25% do total):</p>
+        <ul style="margin:0; padding-left:20px; font-size:0.9rem;">${relHtml}</ul>
+      </div>`;
+  }).join("");
+  $("sa2-results").innerHTML = point2Html;
+
+  // PONTO 3: Atributos Comuns
+  let attrFreq = {};
+  state.cases.forEach(c => {
+    Object.keys(c.attributes).forEach(k => {
+      let val = c.attributes[k];
+      let keyVal = `${k}: ${val}`;
+      attrFreq[keyVal] = (attrFreq[keyVal] || 0) + 1;
+    });
+  });
+  superAnalysisData.ponto3 = attrFreq;
+  
+  let point3Html = `<div class="table-wrap"><table><thead><tr><th>Atributo e Valor</th><th>Frequência Geral nos Cases</th></tr></thead><tbody>`;
+  Object.keys(attrFreq).sort((a,b) => attrFreq[b]-attrFreq[a]).forEach(k => {
+    point3Html += `<tr><td>${escapeHtml(k)}</td><td>${attrFreq[k]}</td></tr>`;
+  });
+  point3Html += `</tbody></table></div>`;
+  $("sa3-results").innerHTML = point3Html;
+
+  // PONTO 4: Compatibilidade Geral por Atributos Diferentes
+  const totalAttrs = Object.keys(attrFreq).length;
+  const point4Html = state.cases.map(c => {
+    const ownAttrs = Object.keys(c.attributes).length;
+    const diffAttrs = totalAttrs - ownAttrs;
+    let compatGeral = totalAttrs > 0 ? ((ownAttrs / totalAttrs) * 100).toFixed(2) : 0;
+    
+    superAnalysisData.ponto4.push({ Case: c.name, AtributosProprios: ownAttrs, DiferentesDaMatrizGeral: diffAttrs, IndiceCompatibilidadeGlobal: compatGeral });
+    return `<tr><td>${escapeHtml(c.name)}</td><td>${ownAttrs}</td><td>${diffAttrs}</td><td><span class="badge success">${compatGeral}%</span></td></tr>`;
+  }).join("");
+  $("sa4-results").innerHTML = `<div class="table-wrap"><table><thead><tr><th>Case</th><th>Atributos Próprios</th><th>Diferentes (Restante da Base)</th><th>Índice de Compat. Global</th></tr></thead><tbody>${point4Html}</tbody></table></div>`;
+
+  // Popular seletores para Resumo Automático (Ponto 5)
+  $("sa5-selectors").innerHTML = state.cases.map(c => `
+    <label style="display:inline-flex; align-items:center; gap: 5px; margin-right: 1rem;">
+      <input type="checkbox" class="sa5-chk" value="${escapeHtml(c.name)}"> ${escapeHtml(c.name)}
+    </label>
+  `).join("");
+
+  addActivity("Super Análise de Cases concluída.");
+  notify("Super Análise calculada com sucesso!");
+}
+
+function generateSuperSummary() {
+  const checked = document.querySelectorAll(".sa5-chk:checked");
+  if(checked.length === 0) return notify("Selecione pelo menos um Case para o resumo.", true);
+  
+  const selectedNames = Array.from(checked).map(c => c.value);
+  const selectedCases = state.cases.filter(c => selectedNames.includes(c.name));
+  
+  let resumo = `<p><strong>Resumo Automático Gerado:</strong></p><p>Foram selecionados ${selectedCases.length} consolidações. `;
+  
+  let allAttrs = {};
+  selectedCases.forEach(c => {
+    Object.keys(c.attributes).forEach(k => {
+      let v = c.attributes[k];
+      allAttrs[`${k}: ${v}`] = (allAttrs[`${k}: ${v}`] || 0) + 1;
+    });
+  });
+
+  const comuns = Object.keys(allAttrs).filter(k => allAttrs[k] > 1);
+  if(comuns.length > 0) {
+    resumo += `Entre eles, observou-se forte intersecção nos atributos: <em>${comuns.join(", ")}</em>, indicando proximidade analítica. `;
+  } else {
+    resumo += `Apesar da seleção, nota-se uma elevada dispersão de atributos, sem marcadores fortes em comum nesta amostra específica. `;
+  }
+
+  resumo += `A base de leitura abrange ${state.files.length} fontes, as quais servem como lastro de evidência para as unidades selecionadas.</p>`;
+  $("sa5-results").innerHTML = `<div class="result">${resumo}</div>`;
+}
+
+function drawSuperChart() {
+  if (!superAnalysisData) return notify("Execute a Super Análise primeiro.", true);
+  
+  const type = $("sa6-chartType").value;
+  const canvas = $("superChart");
+  const ctx = canvas.getContext('2d');
+  if(superActiveChart) superActiveChart.destroy();
+
+  let labels = [], dataVals = [], title = "";
+  const bgColors = ['#1f6feb', '#c62828', '#147d47', '#6c42d9', '#f4b400', '#009688', '#0f9d58'];
+
+  if (type === "bar") {
+    // Relações médias por Case
+    title = "Compatibilidade e Atributos Próprios por Case";
+    labels = superAnalysisData.ponto4.map(d => d.Case);
+    dataVals = superAnalysisData.ponto4.map(d => d.AtributosProprios);
+  } else if (type === "pie") {
+    title = "Top 7 Atributos Mais Comuns";
+    let sortedAttrs = Object.keys(superAnalysisData.ponto3).sort((a,b) => superAnalysisData.ponto3[b] - superAnalysisData.ponto3[a]).slice(0,7);
+    labels = sortedAttrs;
+    dataVals = sortedAttrs.map(k => superAnalysisData.ponto3[k]);
+  } else if (type === "line") {
+    title = "Variação do Índice Global (%)";
+    labels = superAnalysisData.ponto4.map(d => d.Case);
+    dataVals = superAnalysisData.ponto4.map(d => d.IndiceCompatibilidadeGlobal);
+  }
+
+  superActiveChart = new Chart(ctx, {
+    type: type,
+    data: {
+      labels: labels,
+      datasets: [{
+        label: title, data: dataVals, backgroundColor: bgColors, borderWidth: 1
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false }
+  });
+}
+
+function exportSuperCsv() {
+  if (!superAnalysisData) return notify("Execute a Super Análise primeiro.", true);
+  download("super_analise_cases.csv", toCsv(superAnalysisData.ponto4), "text/csv;charset=utf-8");
+  notify("Super Análise exportada.");
+}
+
+/* === END SUPER ANÁLISE === */
+
+
 function executeCross() {
   const a = $("crossA").value.trim();
   const b = $("crossB").value.trim();
@@ -2314,12 +2591,11 @@ function initNavigation() {
   document.querySelectorAll("nav button").forEach(button => {
     button.addEventListener("click", () => {
       const target = button.dataset.view;
-
+      if(!target) return;
 
       document.querySelectorAll("nav button").forEach(item => {
         item.classList.toggle("active", item === button);
       });
-
 
       document.querySelectorAll(".view").forEach(view => {
         view.classList.toggle("active", view.id === target);
@@ -2333,6 +2609,16 @@ function initNavigation() {
       document.querySelector(`nav button[data-view="${button.dataset.go}"]`).click();
     });
   });
+  
+  // Abas Super Análise
+  document.querySelectorAll("#superNavButtons button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#superNavButtons button").forEach(i => i.classList.remove("active"));
+      document.querySelectorAll(".super-subview").forEach(v => v.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(btn.dataset.target).classList.add("active");
+    });
+  });
 }
 
 
@@ -2341,6 +2627,7 @@ function initEvents() {
 
 
   $("saveBtn").addEventListener("click", async () => {
+    if (!(await verifyPasswordAction())) return;
     state.settings.projectName = $("projectName").value.trim() || "Projeto Sem Nome";
     state.settings.projectColor = $("projectThemeColor").value;
     await saveLocal();
@@ -2371,7 +2658,10 @@ function initEvents() {
 
   $("pdfBtn").addEventListener("click", exportPDF);
 
-  $("importDataBtn").addEventListener("click", () => $("importDataFile").click());
+  $("importDataBtn").addEventListener("click", async () => {
+    if (!(await verifyPasswordAction())) return;
+    $("importDataFile").click();
+  });
   $("importDataFile").addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -2549,7 +2839,8 @@ function initEvents() {
   });
 
 
-  $("exportProjectBtn").addEventListener("click", () => {
+  $("exportProjectBtn").addEventListener("click", async () => {
+    if (!(await verifyPasswordAction())) return;
     const payload = { exportedAt: new Date().toISOString(), ...state };
     download("curso-numeracao-projeto.json", JSON.stringify(payload, null, 2), "application/json;charset=utf-8");
     notify("Projeto exportado em arquivo Json");
@@ -2576,6 +2867,12 @@ function initEvents() {
   $("runSentimentBtn").addEventListener("click", runSentimentAnalysis);
   $("calcStopwordsBtn").addEventListener("click", calcGlobalStopwords);
   
+  // Super Análise
+  $("runSuperAnalysisBtn").addEventListener("click", runSuperAnalysis);
+  $("sa5-generateBtn").addEventListener("click", generateSuperSummary);
+  $("sa6-drawBtn").addEventListener("click", drawSuperChart);
+  $("exportSuperCsvBtn").addEventListener("click", exportSuperCsv);
+
   $("crossBtn").addEventListener("click", executeCross);
   $("matrixBtn").addEventListener("click", executeMatrix);
   $("compatBtn").addEventListener("click", calculateCompatibility);
@@ -2612,6 +2909,7 @@ function initEvents() {
 
 
   $("saveSettingsBtn").addEventListener("click", async () => {
+    if (!(await verifyPasswordAction())) return;
     state.settings.projectName = $("projectName").value.trim() || "Curso & Numeração Offline";
     state.settings.maxPreview = Math.max(100, Number($("maxPreview").value) || 8000);
     state.settings.projectColor = $("projectThemeColor").value;
@@ -2656,6 +2954,7 @@ function initEvents() {
 
 
   $("deleteProjectCacheBtn").addEventListener("click", async () => {
+    if (!(await verifyPasswordAction())) return;
     if (!confirm(`Apagar os dados do projeto atual [${state.settings.projectName}]?`)) return;
     await deleteProjectLocal(state.settings.projectName);
     state.files = []; state.codes = []; state.activities = []; state.cases = []; state.memos = [];
@@ -2666,6 +2965,7 @@ function initEvents() {
 
 
   $("deleteCacheBtn").addEventListener("click", async () => {
+    if (!(await verifyPasswordAction())) return;
     if (!confirm("Tem certeza que deseja apagar TODO o cache (Todos os Projetos)?")) return;
     await clearLocal();
     state.files = []; state.codes = []; state.activities = []; state.cases = []; state.memos = [];
