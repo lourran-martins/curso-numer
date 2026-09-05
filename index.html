@@ -1054,53 +1054,58 @@ async function runSuperAnalysis() {
     
     $("sa5-selectors").innerHTML = state.cases.map(c => `<label style="display:inline-flex; align-items:center; gap:5px; margin-right:1rem;"><input type="checkbox" class="sa5-chk" value="${escapeHtml(c.name)}"> ${escapeHtml(c.name)}</label>`).join("");
 
-    // NOVO PONTO 7: Intersecção Tríplice
+    // NOVO PONTO 7: Intersecção Tríplice (Versão com Cache Otimizado)
     const top25Count = Math.max(1, Math.ceil(state.cases.length * 0.25));
     
+    // 1. Cria um mapa de memória: Lê os textos 1 única vez e salva onde cada Case e Código está
+    const fontesPorCase = {};
+    state.cases.forEach(c => {
+      const tk = tokenize(c.name);
+      fontesPorCase[c.name] = state.files.filter(f => tk.some(t => countOccurrences(f.content, t) > 0));
+    });
+
+    const fontesPorCodigo = {};
+    state.codes.forEach(cod => {
+      fontesPorCodigo[cod.id] = state.files.filter(f => cod.words.some(w => countOccurrences(f.content, w) > 0));
+    });
+
+    // 2. Cruza usando apenas o mapa da memória (instantâneo)
     const p7H = state.cases.map(caseA => {
-      // a. Fontes em que o Case A aparece
-      const tkA = tokenize(caseA.name);
-      const fontesA = state.files.filter(f => tkA.some(t => countOccurrences(f.content, t) > 0));
-      // b e c. Comparar com outros
+      const fontesA = fontesPorCase[caseA.name];
       const connections = [];
+      
       state.cases.forEach(caseB => {
         if (caseA.name === caseB.name) return;
-        const tkB = tokenize(caseB.name);
-        const fontesB = state.files.filter(f => tkB.some(t => countOccurrences(f.content, t) > 0));
+        const fontesB = fontesPorCase[caseB.name];
         
-        // (a) Match nas Fontes (Qtd de fontes compartilhadas onde ambos são citados)
+        // (a) Match nas Fontes
         const fontesComuns = fontesA.filter(f => fontesB.includes(f)).length;
-        
         // (b) Atributos em comum
         const attrComuns = Object.keys(caseA.attributes).filter(k => caseA.attributes[k] === caseB.attributes[k]).length;
-        
-        // (c) Códigos em comum (Códigos cujas palavras chave aparecem nas fontes do Case A e do Case B)
+        // (c) Códigos em comum
         let codigosComuns = 0;
         state.codes.forEach(cod => {
-           const codInA = fontesA.some(f => cod.words.some(w => countOccurrences(f.content, w)>0));
-           const codInB = fontesB.some(f => cod.words.some(w => countOccurrences(f.content, w)>0));
-           if (codInA && codInB) codigosComuns++;
+           const fCod = fontesPorCodigo[cod.id];
+           if (fontesA.some(f => fCod.includes(f)) && fontesB.some(f => fCod.includes(f))) {
+             codigosComuns++;
+           }
         });
 
-        // Peso tridimensional
         const rawScore = (fontesComuns * 2) + (attrComuns * 1.5) + (codigosComuns * 1);
         connections.push({ name: caseB.name, f: fontesComuns, a: attrComuns, c: codigosComuns, score: rawScore });
       });
 
-      // Pega o Top 25% das conexões
       connections.sort((a,b) => b.score - a.score);
       const topConns = connections.slice(0, top25Count);
       superAnalysisData.ponto7.push({ Case: caseA.name, TopRelations: topConns });
       
       const relHTML = topConns.map(conn => `<li><strong>${escapeHtml(conn.name)}</strong> <small class="muted">(Score: ${conn.score.toFixed(1)} | Fontes: ${conn.f}, Atributos: ${conn.a}, Códigos: ${conn.c})</small></li>`).join("");
-
       return `<div class="result case-card" style="border-left-color: #0f9d58;">
         <strong>Conexões Tridimensionais de ${escapeHtml(caseA.name)}</strong>
         <p class="muted" style="font-size: 0.85rem; margin-top:2px;">Cruza aparição em fontes (a), atributos compartilhados (b) e alinhamento de códigos (c). Exibindo top ${top25Count} relacionados (25%).</p>
         <ul style="margin:5px 0 0 0; padding-left:20px; font-size:0.9rem;">${relHTML || "Sem conexões de peso."}</ul>
       </div>`;
     }).join("");
-    
     $("sa7-results").innerHTML = p7H;
     addActivity("Super Análise concluída."); notify("Análise completa calculada!");
   });
