@@ -1054,19 +1054,30 @@ async function runSuperAnalysis() {
     
     $("sa5-selectors").innerHTML = state.cases.map(c => `<label style="display:inline-flex; align-items:center; gap:5px; margin-right:1rem;"><input type="checkbox" class="sa5-chk" value="${escapeHtml(c.name)}"> ${escapeHtml(c.name)}</label>`).join("");
 
-    // NOVO PONTO 7: Intersecção Tríplice (Versão com Cache Otimizado)
+    // NOVO PONTO 7: Intersecção Tríplice (Versão com Cache Otimizado + Normalização Única)
     const top25Count = Math.max(1, Math.ceil(state.cases.length * 0.25));
     
-    // 1. Cria um mapa de memória: Lê os textos 1 única vez e salva onde cada Case e Código está
+    // 0. ANTECIPAÇÃO DE GARGALO: Normaliza os textos de todas as fontes uma única vez
+    const fontesNormalizadas = state.files.map(f => ({
+      arquivoOriginal: f,
+      textoNorm: normalize(f.content)
+    }));
+    
+    // 1. Cria um mapa de memória: Busca no texto já mastigado (muito mais rápido)
     const fontesPorCase = {};
     state.cases.forEach(c => {
-      const tk = tokenize(c.name);
-      fontesPorCase[c.name] = state.files.filter(f => tk.some(t => countOccurrences(f.content, t) > 0));
+      const tkNorm = tokenize(c.name); // tokenize já entrega palavras normalizadas
+      fontesPorCase[c.name] = fontesNormalizadas
+        .filter(fN => tkNorm.some(t => fN.textoNorm.includes(t)))
+        .map(fN => fN.arquivoOriginal);
     });
 
     const fontesPorCodigo = {};
     state.codes.forEach(cod => {
-      fontesPorCodigo[cod.id] = state.files.filter(f => cod.words.some(w => countOccurrences(f.content, w) > 0));
+      const wordsNorm = cod.words.map(w => normalize(w));
+      fontesPorCodigo[cod.id] = fontesNormalizadas
+        .filter(fN => wordsNorm.some(w => fN.textoNorm.includes(w)))
+        .map(fN => fN.arquivoOriginal);
     });
 
     // 2. Cruza usando apenas o mapa da memória (instantâneo)
