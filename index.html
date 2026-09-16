@@ -459,6 +459,9 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
         <button data-target="sa-resumo">5. Resumo Interativo</button>
         <button data-target="sa-graficos">6. Matrizes e Gráficos</button>
         <button data-target="sa-top25" style="border-color: #6c42d9; color: #6c42d9; font-weight: bold;">7. Intersecção Tríplice (Top 25%)</button>
+        
+        <!-- ESTE É O NOVO BOTÃO DA IA -->
+        <button data-target="sa-ia" style="border-color: #1557ba; color: #1557ba; font-weight: bold; margin-left: 0.5rem; background-color: #eef2f5;">8. Analista de IA</button>
       </div>
 
       <div class="toolbar" style="margin-bottom: 1.5rem;">
@@ -508,6 +511,40 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
       <div id="sa-top25" class="super-subview">
         <div id="sa7-results" class="empty">Execute a análise para extrair as super-relações de cases baseadas em (a) Fontes comuns, (b) Atributos, (c) Códigos.</div>
       </div>
+
+      <!-- ESTE É O NOVO PAINEL DA IA -->
+      <div id="sa-ia" class="super-subview">
+        <div class="card" style="border: 2px solid var(--primary-dark); background: var(--panel-2); margin-top: 1rem;">
+          <h3 style="color: var(--primary-dark); margin-top: 0; display: flex; align-items: center; gap: 8px;">
+            Analista de Inteligência Qualitativa (LLM)
+          </h3>
+          <p class="muted" style="font-size: 0.95rem;">
+            Este módulo integra o seu corpus integral com o servidor Node.js operando na porta 3000. O cruzamento garante a leitura <i>ipsis litteris</i> das suas notas de auditoria, fontes, atributos e livro de códigos, sem interferência ou alucinações exógenas (Temperature: 0.2).
+          </p>
+  
+          <div style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin: 1.5rem 0;">
+            <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.95rem; font-weight: 600;">
+              <input type="checkbox" id="ia-consent" style="width: 20px; height: 20px; margin-top: 2px;">
+              <span>Declaro meu consentimento obrigatório para serializar e enviar temporariamente o estado atual do projeto (JSON) via POST HTTP à nuvem/API para fins exclusivos de inferência qualitativa estruturada.</span>
+            </label>
+          </div>
+  
+          <div id="ia-controls" style="opacity: 0.4; pointer-events: none; transition: 0.3s ease;">
+            <div class="field">
+              <label for="ia-query">Diretriz da Investigação Metodológica</label>
+              <textarea id="ia-query" placeholder="Ex.: Cruze as consolidações (cases) mapeadas com o livro de códigos. Identifique e pontue os vértices lógicos preponderantes em formato de texto estruturado." style="min-height: 100px; font-size: 1rem; padding: 1rem;"></textarea>
+            </div>
+            <button id="ia-send-btn" style="width: 100%; font-size: 1.1rem; padding: 1rem; background: var(--primary-dark);">
+              Disparar Análise Sênior
+            </button>
+          </div>
+  
+          <div id="ia-response-container" style="display: none; margin-top: 1.5rem; background: var(--panel); padding: 1.5rem; border-radius: 8px; border-left: 5px solid var(--primary-dark); font-size: 1rem; line-height: 1.7; color: var(--text);">
+          </div>
+        </div>
+      </div>
+      <!-- FIM DO PAINEL DA IA -->
+
     </div>
   </section>
 
@@ -703,7 +740,7 @@ let state = {
   files: [], codes: [], cases: [], memos: [], activities: [],
   settings: {
     projectName: "Curso & Numeração Offline", maxPreview: 8000, projectColor: "#1f6feb", stopwords: [],
-    authorName: "", orgName: "", workTitle: "" // Novos Metadados
+    authorName: "", orgName: "", workTitle: ""
   },
   lastCross: [], lastMatrix: [], lastSheetAnalysis: null
 };
@@ -718,7 +755,6 @@ function notify(message, error = false) {
   clearTimeout(notify.timer); notify.timer = setTimeout(() => { el.className = "status"; }, 3000);
 }
 
-// === Sistema de Barra de Progresso Global ===
 async function runWithProgress(taskName, percentageSteps, taskCallback) {
   const overlay = $("progressOverlay");
   const bar = $("progressBar");
@@ -1008,7 +1044,6 @@ function addMemo() {
   });
 }
 
-// === Modulo Novo: Super Análise Top 25% Integrado ===
 async function runSuperAnalysis() {
   await runWithProgress("Super Análise de Múltiplos Fatores", 15, async () => {
     if (!state.cases || state.cases.length === 0 || !state.files || state.files.length === 0) { notify("É necessário ter Fontes e Cases", true); return; }
@@ -1054,33 +1089,21 @@ async function runSuperAnalysis() {
     
     $("sa5-selectors").innerHTML = state.cases.map(c => `<label style="display:inline-flex; align-items:center; gap:5px; margin-right:1rem;"><input type="checkbox" class="sa5-chk" value="${escapeHtml(c.name)}"> ${escapeHtml(c.name)}</label>`).join("");
 
-    // NOVO PONTO 7: Intersecção Tríplice (Versão com Cache Otimizado + Normalização Única)
     const top25Count = Math.max(1, Math.ceil(state.cases.length * 0.25));
+    const fontesNormalizadas = state.files.map(f => ({ arquivoOriginal: f, textoNorm: normalize(f.content) }));
     
-    // 0. ANTECIPAÇÃO DE GARGALO: Normaliza os textos de todas as fontes uma única vez
-    const fontesNormalizadas = state.files.map(f => ({
-      arquivoOriginal: f,
-      textoNorm: normalize(f.content)
-    }));
-    
-    // 1. Cria um mapa de memória: Busca no texto já mastigado (muito mais rápido)
     const fontesPorCase = {};
     state.cases.forEach(c => {
-      const tkNorm = tokenize(c.name); // tokenize já entrega palavras normalizadas
-      fontesPorCase[c.name] = fontesNormalizadas
-        .filter(fN => tkNorm.some(t => fN.textoNorm.includes(t)))
-        .map(fN => fN.arquivoOriginal);
+      const tkNorm = tokenize(c.name);
+      fontesPorCase[c.name] = fontesNormalizadas.filter(fN => tkNorm.some(t => fN.textoNorm.includes(t))).map(fN => fN.arquivoOriginal);
     });
 
     const fontesPorCodigo = {};
     state.codes.forEach(cod => {
       const wordsNorm = cod.words.map(w => normalize(w));
-      fontesPorCodigo[cod.id] = fontesNormalizadas
-        .filter(fN => wordsNorm.some(w => fN.textoNorm.includes(w)))
-        .map(fN => fN.arquivoOriginal);
+      fontesPorCodigo[cod.id] = fontesNormalizadas.filter(fN => wordsNorm.some(w => fN.textoNorm.includes(w))).map(fN => fN.arquivoOriginal);
     });
 
-    // 2. Cruza usando apenas o mapa da memória (instantâneo)
     const p7H = state.cases.map(caseA => {
       const fontesA = fontesPorCase[caseA.name];
       const connections = [];
@@ -1088,18 +1111,12 @@ async function runSuperAnalysis() {
       state.cases.forEach(caseB => {
         if (caseA.name === caseB.name) return;
         const fontesB = fontesPorCase[caseB.name];
-        
-        // (a) Match nas Fontes
         const fontesComuns = fontesA.filter(f => fontesB.includes(f)).length;
-        // (b) Atributos em comum
         const attrComuns = Object.keys(caseA.attributes).filter(k => caseA.attributes[k] === caseB.attributes[k]).length;
-        // (c) Códigos em comum
         let codigosComuns = 0;
         state.codes.forEach(cod => {
            const fCod = fontesPorCodigo[cod.id];
-           if (fontesA.some(f => fCod.includes(f)) && fontesB.some(f => fCod.includes(f))) {
-             codigosComuns++;
-           }
+           if (fontesA.some(f => fCod.includes(f)) && fontesB.some(f => fCod.includes(f))) { codigosComuns++; }
         });
 
         const rawScore = (fontesComuns * 2) + (attrComuns * 1.5) + (codigosComuns * 1);
@@ -1278,8 +1295,6 @@ function initNavigation() {
   }));
 }
 
-// === Gerador do Relatório Hipercompleto ===
-// === Gerador do Relatório Hipercompleto ===
 async function generateHyperReport() {
   if (!(await verifyPasswordAction())) return;
 
@@ -1288,11 +1303,9 @@ async function generateHyperReport() {
   if(checks.length === 0) return notify("Nenhuma aba selecionada para o relatório", true);
 
   await runWithProgress("Compilando Relatório PDF e JSON", 5, async () => {
-    // 1. Exportar JSON simultaneamente
     const payload = { exportedAt: new Date().toISOString(), ...state };
     download(`${state.settings.projectName}-ProjetoCompleto.json`, JSON.stringify(payload, null, 2), "application/json;charset=utf-8");
 
-    // 2. Extrair dados para NLP
     const autor = state.settings.authorName || "Investigador Padrão";
     const org = state.settings.orgName || "Organização Analítica";
     const tituloTrabalho = state.settings.workTitle || state.settings.projectName;
@@ -1301,12 +1314,10 @@ async function generateHyperReport() {
     const principaisCodigos = state.codes.slice(0,3).map(c=>c.name).join(", ") || "nenhum código estruturado";
     const dataAtual = new Date().toLocaleDateString("pt-BR");
 
-    // 3. Montar área invisível para renderizar
     const exp = $("pdfExportContainer");
     exp.style.display = "block";
-    exp.innerHTML = ""; // limpa
+    exp.innerHTML = ""; 
 
-    // Capa e Logo (Texto)
     let html = `
       <div style="text-align:center; padding: 40px 0; border-bottom: 2px solid #000; margin-bottom: 30px;">
         <div style="font-size: 50px; color: #1f6feb; margin-bottom: 10px;">▦</div>
@@ -1317,7 +1328,6 @@ async function generateHyperReport() {
       </div>
     `;
 
-    // Resumo Geral (200 palavras via Léxico)
     html += `
       <h3 style="color:#1f6feb; border-bottom:1px solid #ccc;">Síntese Macroanalítica (Resumo Geral)</h3>
       <p style="text-align: justify; line-height: 1.6; font-size: 14px;">
@@ -1325,7 +1335,6 @@ async function generateHyperReport() {
       </p>
     `;
 
-    // Processar módulos de 100 palavras por checkbox
     if(checks.includes("codes")) {
       html += `
         <h4 style="color:#147d47;">Módulo de Codificação Qualitativa</h4>
@@ -1360,7 +1369,6 @@ async function generateHyperReport() {
 
     exp.innerHTML = html;
 
-    // Geração via HTML2PDF
     const opt = {
       margin:       0.6,
       filename:     `${tituloTrabalho}-Relatorio.pdf`,
@@ -1378,7 +1386,6 @@ async function generateHyperReport() {
 function initEvents() {
   $("themeBtn").addEventListener("click", applyTheme);
   
-  // Buscar URL
   $("fetchUrlBtn").addEventListener("click", async () => {
     const url = $("onlineUrl").value.trim(); if(!url) return notify("Insira um Link", true);
     await runWithProgress("Baixando Conteúdo da Nuvem", 25, async () => {
@@ -1503,6 +1510,87 @@ function initEvents() {
   ["dragenter", "dragover"].forEach(t => dZ.addEventListener(t, e => { e.preventDefault(); dZ.classList.add("dragover"); }));
   ["dragleave", "drop"].forEach(t => dZ.addEventListener(t, e => { e.preventDefault(); dZ.classList.remove("dragover"); }));
   dZ.addEventListener("drop", e => { state.pendingFiles = e.dataTransfer.files; $("fileInput").files = e.dataTransfer.files; notify(`${state.pendingFiles.length} selecionado(s)`); });
+
+  function parseMarkdownToHtml(markdownString) {
+    let htmlStr = escapeHtml(markdownString);
+    htmlStr = htmlStr.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    htmlStr = htmlStr.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    htmlStr = htmlStr.replace(/^### (.*?)$/gm, '<h3 style="margin: 1.5rem 0 0.5rem; color: var(--primary-dark);">$1</h3>');
+    htmlStr = htmlStr.replace(/^## (.*?)$/gm, '<h2 style="margin: 1.5rem 0 0.5rem; color: var(--primary-dark); border-bottom: 1px solid var(--border);">$1</h2>');
+    return htmlStr;
+  }
+
+  const iaConsent = document.getElementById('ia-consent');
+  const iaControls = document.getElementById('ia-controls');
+  const iaBtnSend = document.getElementById('ia-send-btn');
+  const iaQuery = document.getElementById('ia-query');
+  const iaResponseBox = document.getElementById('ia-response-container');
+
+  iaConsent.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      iaControls.style.opacity = '1';
+      iaControls.style.pointerEvents = 'auto';
+    } else {
+      iaControls.style.opacity = '0.4';
+      iaControls.style.pointerEvents = 'none';
+      iaResponseBox.style.display = 'none';
+    }
+  });
+
+  iaBtnSend.addEventListener('click', async () => {
+    const perguntaTexto = iaQuery.value.trim();
+    if (!perguntaTexto) {
+      notify("Defina a diretriz para a Inteligência Qualitativa.", true);
+      return iaQuery.focus();
+    }
+
+    iaBtnSend.disabled = true;
+    iaBtnSend.innerText = '⚗️ Processando malha de dados na Nuvem (Aguarde)...';
+    iaResponseBox.style.display = 'none';
+
+    try {
+      notify("Iniciando upload temporário para inferência...");
+      
+      const response = await fetch('http://localhost:3000/api/analista-ia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projeto: state,
+          pergunta: perguntaTexto
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha no canal de comunicação com o servidor Node.js.');
+      }
+
+      const data = await response.json();
+
+      iaResponseBox.style.display = 'block';
+      iaResponseBox.innerHTML = `
+        <div style="display: flex; gap: 8px; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 15px;">
+           <span style="font-size: 1.2rem;">🔬</span>
+           <strong style="color: var(--primary-dark);">Relatório Analítico Metodológico:</strong>
+        </div>
+        <div>${parseMarkdownToHtml(data.text)}</div>
+      `;
+      notify("Relatório Qualitativo Sênior gerado com sucesso.");
+
+    } catch (err) {
+      console.error("[Front-end LLM Error]:", err);
+      notify("Ocorreu um erro no tráfego da API.", true);
+      iaResponseBox.style.display = 'block';
+      iaResponseBox.innerHTML = `
+        <span style="color: var(--danger);">
+          <strong>Erro Crítico:</strong> ${escapeHtml(err.message)}<br>
+          <small>Verifique se o seu servidor Express na porta 3000 está em execução e acessível.</small>
+        </span>
+      `;
+    } finally {
+      iaBtnSend.disabled = false;
+      iaBtnSend.innerText = 'Disparar Análise Sênior';
+    }
+  });
 }
 
 async function init() {
