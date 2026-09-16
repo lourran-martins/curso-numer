@@ -519,13 +519,13 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
             Analista de Inteligência Qualitativa (LLM)
           </h3>
           <p class="muted" style="font-size: 0.95rem;">
-            Este módulo integra o seu corpus integral com o servidor Node.js operando na porta 3000. O cruzamento garante a leitura <i>ipsis litteris</i> das suas notas de auditoria, fontes, atributos e livro de códigos, sem interferência ou alucinações exógenas (Temperature: 0.2).
+            A análise utiliza a API do Google Gemini conectada diretamente pelo navegador. Certifique-se de configurar sua Chave de API na aba de "Configuração". O cruzamento é rigoroso e sem alucinações (Temperature: 0.2).
           </p>
   
           <div style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin: 1.5rem 0;">
             <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.95rem; font-weight: 600;">
               <input type="checkbox" id="ia-consent" style="width: 20px; height: 20px; margin-top: 2px;">
-              <span>Declaro meu consentimento obrigatório para serializar e enviar temporariamente o estado atual do projeto (JSON) via POST HTTP à nuvem/API para fins exclusivos de inferência qualitativa estruturada.</span>
+              <span>Declaro meu consentimento obrigatório para serializar e enviar temporariamente o estado atual do projeto aos servidores da Google (Gemini API) para fins exclusivos de inferência qualitativa.</span>
             </label>
           </div>
   
@@ -674,6 +674,12 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
       <div class="card">
         <h2>Configuração Geral e Metadados</h2>
         
+        <!-- CAMPO DA CHAVE DE API ADICIONADO AQUI -->
+        <div class="field" style="background: var(--panel-2); padding: 10px; border-radius: 8px; border: 1px solid var(--primary-dark);">
+          <label for="geminiApiKey" style="color: var(--primary-dark);">Chave de API (Google Gemini)</label>
+          <input type="password" id="geminiApiKey" placeholder="Cole sua chave aqui (salva apenas no aparelho)">
+        </div>
+
         <div class="field">
           <label for="authorName">Nome Completo do Autor (Para Relatório)</label>
           <input id="authorName" placeholder="Ex: Lourran Martins Fonseca">
@@ -740,7 +746,7 @@ let state = {
   files: [], codes: [], cases: [], memos: [], activities: [],
   settings: {
     projectName: "Curso & Numeração Offline", maxPreview: 8000, projectColor: "#1f6feb", stopwords: [],
-    authorName: "", orgName: "", workTitle: ""
+    authorName: "", orgName: "", workTitle: "", geminiApiKey: ""
   },
   lastCross: [], lastMatrix: [], lastSheetAnalysis: null
 };
@@ -979,6 +985,7 @@ function renderAll() {
   renderStats(); renderActivity(); renderSources(); renderCodes(); renderCases(); renderMemos(); renderData(); renderStopwords();
   $("projectName").value = state.settings.projectName; $("maxPreview").value = state.settings.maxPreview; $("projectThemeColor").value = state.settings.projectColor;
   $("authorName").value = state.settings.authorName || ""; $("orgName").value = state.settings.orgName || ""; $("workTitle").value = state.settings.workTitle || "";
+  $("geminiApiKey").value = state.settings.geminiApiKey || "";
 }
 
 async function readSelectedFiles(fileList) {
@@ -1417,6 +1424,7 @@ function initEvents() {
     runWithProgress("Salvando Estrutura", 50, async () => {
       state.settings.projectName = $("projectName").value.trim() || "Projeto Sem Nome";
       state.settings.projectColor = $("projectThemeColor").value;
+      state.settings.geminiApiKey = $("geminiApiKey").value.trim();
       await saveLocal(); addActivity("Projeto salvo na pasta virtual"); notify("Pasta salva"); renderAll();
     });
   });
@@ -1482,6 +1490,7 @@ function initEvents() {
     state.settings.authorName = $("authorName").value.trim();
     state.settings.orgName = $("orgName").value.trim();
     state.settings.workTitle = $("workTitle").value.trim();
+    state.settings.geminiApiKey = $("geminiApiKey").value.trim();
     renderAll(); await saveLocal(); notify("Configuração e metadados salvos");
   });
 
@@ -1538,6 +1547,11 @@ function initEvents() {
   });
 
   iaBtnSend.addEventListener('click', async () => {
+    const apiKey = state.settings.geminiApiKey;
+    if (!apiKey) {
+      return notify("Erro: Cole sua Chave API do Gemini na aba 'Configuração'.", true);
+    }
+
     const perguntaTexto = iaQuery.value.trim();
     if (!perguntaTexto) {
       notify("Defina a diretriz para a Inteligência Qualitativa.", true);
@@ -1545,26 +1559,42 @@ function initEvents() {
     }
 
     iaBtnSend.disabled = true;
-    iaBtnSend.innerText = '⚗️ Processando malha de dados na Nuvem (Aguarde)...';
+    iaBtnSend.innerText = '⚗️ Enviando para o Google Gemini (Aguarde)...';
     iaResponseBox.style.display = 'none';
 
     try {
-      notify("Iniciando upload temporário para inferência...");
+      notify("Conectando direto com a IA...");
       
-      const response = await fetch('http://localhost:3000/api/analista-ia', {
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+      const systemPrompt = `Você é um Analista de Dados Qualitativos Sênior rigoroso. Analise o corpus de pesquisa estruturado em JSON de forma cartesiana.
+      Regras absolutas:
+      1. Leia estritamente o corpus. Não invente fatos externos.
+      2. Cruze as fontes ('files') com o livro de códigos ('codes') e os metadados ('cases').
+      3. Responda à pergunta baseando-se ipsis litteris nos dados do JSON.
+      4. Estruture a resposta em Markdown de forma acadêmica e consolidada.`;
+
+      const requestBody = {
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{
+            role: "user",
+            parts: [{ text: `DIRETRIZ DA INVESTIGAÇÃO: ${perguntaTexto}\n\nDADOS DO PROJETO (JSON):\n${JSON.stringify(state)}` }]
+        }],
+        generationConfig: { temperature: 0.2 }
+      };
+
+      const response = await fetch(geminiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projeto: state,
-          pergunta: perguntaTexto
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
-        throw new Error('Falha no canal de comunicação com o servidor Node.js.');
+        throw new Error('Falha na comunicação direta com a API do Gemini.');
       }
 
       const data = await response.json();
+      const textoResposta = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Nenhuma análise pôde ser formulada.';
 
       iaResponseBox.style.display = 'block';
       iaResponseBox.innerHTML = `
@@ -1572,7 +1602,7 @@ function initEvents() {
            <span style="font-size: 1.2rem;">🔬</span>
            <strong style="color: var(--primary-dark);">Relatório Analítico Metodológico:</strong>
         </div>
-        <div>${parseMarkdownToHtml(data.text)}</div>
+        <div>${parseMarkdownToHtml(textoResposta)}</div>
       `;
       notify("Relatório Qualitativo Sênior gerado com sucesso.");
 
@@ -1583,7 +1613,7 @@ function initEvents() {
       iaResponseBox.innerHTML = `
         <span style="color: var(--danger);">
           <strong>Erro Crítico:</strong> ${escapeHtml(err.message)}<br>
-          <small>Verifique se o seu servidor Express na porta 3000 está em execução e acessível.</small>
+          <small>Verifique a sua chave API na aba de Configurações e a sua conexão de internet.</small>
         </span>
       `;
     } finally {
