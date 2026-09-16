@@ -459,8 +459,6 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
         <button data-target="sa-resumo">5. Resumo Interativo</button>
         <button data-target="sa-graficos">6. Matrizes e Gráficos</button>
         <button data-target="sa-top25" style="border-color: #6c42d9; color: #6c42d9; font-weight: bold;">7. Intersecção Tríplice (Top 25%)</button>
-        
-        <!-- ESTE É O NOVO BOTÃO DA IA -->
         <button data-target="sa-ia" style="border-color: #1557ba; color: #1557ba; font-weight: bold; margin-left: 0.5rem; background-color: #eef2f5;">8. Analista de IA</button>
       </div>
 
@@ -512,27 +510,27 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
         <div id="sa7-results" class="empty">Execute a análise para extrair as super-relações de cases baseadas em (a) Fontes comuns, (b) Atributos, (c) Códigos.</div>
       </div>
 
-      <!-- ESTE É O NOVO PAINEL DA IA -->
+      <!-- PAINEL DA IA (Atualizado) -->
       <div id="sa-ia" class="super-subview">
         <div class="card" style="border: 2px solid var(--primary-dark); background: var(--panel-2); margin-top: 1rem;">
           <h3 style="color: var(--primary-dark); margin-top: 0; display: flex; align-items: center; gap: 8px;">
             Analista de Inteligência Qualitativa (LLM)
           </h3>
           <p class="muted" style="font-size: 0.95rem;">
-            A análise utiliza a API do Google Gemini conectada diretamente pelo navegador. Certifique-se de configurar sua Chave de API na aba de "Configuração". O cruzamento é rigoroso e sem alucinações (Temperature: 0.2).
+            A análise utiliza a API do Google Gemini conectada diretamente pelo navegador. Certifique-se de configurar sua Chave de API na aba de "Configuração".
           </p>
   
           <div style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin: 1.5rem 0;">
             <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.95rem; font-weight: 600;">
               <input type="checkbox" id="ia-consent" style="width: 20px; height: 20px; margin-top: 2px;">
-              <span>Declaro meu consentimento obrigatório para serializar e enviar temporariamente o estado atual do projeto aos servidores da Google (Gemini API) para fins exclusivos de inferência qualitativa.</span>
+              <span>Declaro meu consentimento obrigatório para serializar e enviar os dados deste projeto aos servidores da Google (Gemini API) para fins de inferência qualitativa.</span>
             </label>
           </div>
   
           <div id="ia-controls" style="opacity: 0.4; pointer-events: none; transition: 0.3s ease;">
             <div class="field">
               <label for="ia-query">Diretriz da Investigação Metodológica</label>
-              <textarea id="ia-query" placeholder="Ex.: Cruze as consolidações (cases) mapeadas com o livro de códigos. Identifique e pontue os vértices lógicos preponderantes em formato de texto estruturado." style="min-height: 100px; font-size: 1rem; padding: 1rem;"></textarea>
+              <textarea id="ia-query" placeholder="Ex.: O que os casos X e Y têm em comum?" style="min-height: 100px; font-size: 1rem; padding: 1rem;"></textarea>
             </div>
             <button id="ia-send-btn" style="width: 100%; font-size: 1.1rem; padding: 1rem; background: var(--primary-dark);">
               Disparar Análise Sênior
@@ -674,7 +672,6 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
       <div class="card">
         <h2>Configuração Geral e Metadados</h2>
         
-        <!-- CAMPO DA CHAVE DE API ADICIONADO AQUI -->
         <div class="field" style="background: var(--panel-2); padding: 10px; border-radius: 8px; border: 1px solid var(--primary-dark);">
           <label for="geminiApiKey" style="color: var(--primary-dark);">Chave de API (Google Gemini)</label>
           <input type="password" id="geminiApiKey" placeholder="Cole sua chave aqui (salva apenas no aparelho)">
@@ -1559,13 +1556,13 @@ function initEvents() {
     }
 
     iaBtnSend.disabled = true;
-    iaBtnSend.innerText = '⚗️ Enviando para o Google Gemini (Aguarde)...';
+    iaBtnSend.innerText = '⚗️ Processando dados e contatando IA (Aguarde)...';
     iaResponseBox.style.display = 'none';
 
     try {
-      notify("Conectando direto com a IA...");
+      notify("Preparando pacote de dados...");
       
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
 
       const systemPrompt = `Você é um Analista de Dados Qualitativos Sênior rigoroso. Analise o corpus de pesquisa estruturado em JSON de forma cartesiana.
       Regras absolutas:
@@ -1574,14 +1571,24 @@ function initEvents() {
       3. Responda à pergunta baseando-se ipsis litteris nos dados do JSON.
       4. Estruture a resposta em Markdown de forma acadêmica e consolidada.`;
 
+      // Filtro para reduzir tamanho: evita enviar janelas de configurações e manda só os dados que importam
+      const projetoLimpo = {
+        fontes: state.files.map(f => ({ nome: f.name, conteudo: f.content, ehPlanilha: f.isSheet })),
+        codigos: state.codes,
+        cases: state.cases,
+        memos: state.memos
+      };
+
       const requestBody = {
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: [{
             role: "user",
-            parts: [{ text: `DIRETRIZ DA INVESTIGAÇÃO: ${perguntaTexto}\n\nDADOS DO PROJETO (JSON):\n${JSON.stringify(state)}` }]
+            parts: [{ text: `DIRETRIZ DA INVESTIGAÇÃO: ${perguntaTexto}\n\nDADOS DO PROJETO (JSON):\n${JSON.stringify(projetoLimpo)}` }]
         }],
         generationConfig: { temperature: 0.2 }
       };
+
+      notify("Enviando pacote para a Google...");
 
       const response = await fetch(geminiUrl, {
         method: 'POST',
@@ -1590,11 +1597,14 @@ function initEvents() {
       });
 
       if (!response.ok) {
-        throw new Error('Falha na comunicação direta com a API do Gemini.');
+        // Captura o erro exato do servidor da Google para ajudar no diagnóstico
+        const errorDetails = await response.json().catch(() => ({}));
+        const googleError = errorDetails.error?.message || response.statusText || 'Erro desconhecido';
+        throw new Error(`Google API [Status ${response.status}]: ${googleError}`);
       }
 
       const data = await response.json();
-      const textoResposta = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Nenhuma análise pôde ser formulada.';
+      const textoResposta = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Nenhuma análise pôde ser formulada pelos dados fornecidos.';
 
       iaResponseBox.style.display = 'block';
       iaResponseBox.innerHTML = `
@@ -1612,8 +1622,12 @@ function initEvents() {
       iaResponseBox.style.display = 'block';
       iaResponseBox.innerHTML = `
         <span style="color: var(--danger);">
-          <strong>Erro Crítico:</strong> ${escapeHtml(err.message)}<br>
-          <small>Verifique a sua chave API na aba de Configurações e a sua conexão de internet.</small>
+          <strong>Erro de Conexão:</strong> ${escapeHtml(err.message)}<br>
+          <small style="display:block; margin-top:10px; color: var(--text);">
+            <strong>Possíveis causas:</strong><br>
+            1. A Chave API informada é de um tipo inválido.<br>
+            2. O seu projeto possui textos gigantescos que ultrapassam o limite de pacote da internet.
+          </small>
         </span>
       `;
     } finally {
