@@ -1,6 +1,9 @@
 # Documentação Normativa e Termos de Uso: Curso & Numeração Offline
 
-Autor e Desenvolvedor Principal: Lourran Martins Fonseca Localidade: Cachoeiras de Macacu, RJ, Brasil Licenciamento: Apache License 2.0 Classificação do Software: CAQDAS (Computer-Assisted Qualitative Data Analysis Software) e RAG (Retrieval-Augmented Generation) Progressivo.
+Autor e Desenvolvedor Principal: Lourran Martins Fonseca
+Localidade: Cachoeiras de Macacu, RJ, Brasil
+Licenciamento: Apache License 2.0
+Classificação do Software: CAQDAS (Computer-Assisted Qualitative Data Analysis Software) e RAG (Retrieval-Augmented Generation) Progressivo.
 
 1. Natureza e Escopo do Software
 
