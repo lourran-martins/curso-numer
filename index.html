@@ -290,7 +290,7 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
     <button data-view="memos">Memos</button>
     <button data-view="autocode">Inteligência Qualitativa</button>
     <button data-view="cross">Cruzamento</button>
-    <button data-view="matrix">Matrizes</button>
+    <button data-view="matrix">Matriz NVivo</button>
     <button data-view="compat">Compatibilidade</button>
     <button data-view="sheets">Planilhas</button>
     <button data-view="charts">Gráficos</button>
@@ -1456,7 +1456,17 @@ function initEvents() {
   $("closeHyperReportBtn").addEventListener("click", () => $("hyperReportModal").style.display = "none");
   $("executeHyperReportBtn").addEventListener("click", generateHyperReport);
 
-  $("importDataBtn").addEventListener("click", async () => { if (!(await verifyPasswordAction())) return; $("importDataFile").click(); });
+  $("importDataBtn").addEventListener("click", () => { 
+    const storedHash = localStorage.getItem("cn_crypto_hash");
+    if (storedHash) {
+      const val = prompt("Ação restrita (Importação). Digite a senha:");
+      if (val === null) return;
+      let hash = 0; for (let i = 0; i < val.length; i++) { hash = ((hash << 5) - hash) + val.charCodeAt(i); hash |= 0; }
+      if (hash.toString() !== storedHash) return notify("Acesso negado. Senha incorreta.", true);
+    }
+    $("importDataFile").click(); 
+  });
+  
   $("importDataFile").addEventListener("change", async (e) => {
     const file = e.target.files[0]; if (!file) return;
     runWithProgress("Importando Conjunto de Dados", 10, async () => {
