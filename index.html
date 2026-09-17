@@ -586,7 +586,7 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
   <section class="view" id="autocode">
     <div class="card">
       <h2>Inteligência Qualitativa Avançada</h2>
-      <p class="muted">Classifique emoções automatically ou encontre os temas mais recorrentes ignorando palavras de descarte.</p>
+      <p class="muted">Classifique emoções automaticamente ou encontre os temas mais recorrentes ignorando palavras de descarte.</p>
       <div class="grid two">
         <div class="card" style="box-shadow:none; border-color:var(--border)">
           <h3>Codificação Automática</h3>
@@ -782,15 +782,19 @@ async function runWithProgress(taskName, percentageSteps, taskCallback) {
   
   notify(`Processando: ${taskName}...`);
 
-  for (let i = 0; i <= 100; i += percentageSteps) {
-    bar.style.width = `${i}%`; pText.innerText = `${i}%`;
-    await new Promise(r => setTimeout(r, 15)); 
+  try {
+    for (let i = 0; i <= 100; i += percentageSteps) {
+      bar.style.width = `${i}%`; pText.innerText = `${i}%`;
+      await new Promise(r => setTimeout(r, 15)); 
+    }
+    await taskCallback();
+    bar.style.width = "100%"; pText.innerText = "100%";
+  } catch (err) {
+    console.error(err);
+    notify("Erro durante o processamento.", true);
+  } finally {
+    setTimeout(() => { overlay.style.display = "none"; bar.style.width = "0%"; }, 400);
   }
-  
-  await taskCallback();
-  
-  bar.style.width = "100%"; pText.innerText = "100%";
-  setTimeout(() => { overlay.style.display = "none"; bar.style.width = "0%"; }, 400);
 }
 
 function escapeHtml(value) {
@@ -823,9 +827,33 @@ function initCrypto() {
   btn.addEventListener("click", () => {
     const val = input.value.trim(); if(!val) return notify("Digite a senha!", true);
     let hash = 0; for (let i = 0; i < val.length; i++) { hash = ((hash << 5) - hash) + val.charCodeAt(i); hash |= 0; }
-    if(!storedHash) { localStorage.setItem("cn_crypto_hash", hash); modal.style.display = "none"; notify("Criptografia configurada."); }
-    else { if(hash.toString() === storedHash) { modal.style.display = "none"; } else { notify("Senha incorreta!", true); } }
+    if(!storedHash) { 
+      localStorage.setItem("cn_crypto_hash", hash); 
+      sessionStorage.setItem("cn_unlocked", "true"); // Desbloqueia sessão de salvamento
+      modal.style.display = "none"; notify("Criptografia configurada."); 
+    }
+    else { 
+      if(hash.toString() === storedHash) { 
+        sessionStorage.setItem("cn_unlocked", "true"); // Desbloqueia sessão de salvamento
+        modal.style.display = "none"; 
+      } else { notify("Senha incorreta!", true); } 
+    }
   });
+}
+
+async function verifyPasswordAction() {
+  const storedHash = localStorage.getItem("cn_crypto_hash"); 
+  if (!storedHash) return true;
+  if (sessionStorage.getItem("cn_unlocked") === "true") return true; // Ignora prompt se já logado
+
+  const val = prompt("Ação restrita. Digite a senha:");
+  if (val === null) return false;
+  let hash = 0; for (let i = 0; i < val.length; i++) { hash = ((hash << 5) - hash) + val.charCodeAt(i); hash |= 0; }
+  if (hash.toString() === storedHash) {
+    sessionStorage.setItem("cn_unlocked", "true");
+    return true;
+  }
+  notify("Acesso negado. Senha incorreta.", true); return false;
 }
 
 function openDatabase() {
@@ -985,6 +1013,56 @@ function renderStopwords() {
   else d.textContent = "Descartes ativos: Nenhum.";
 }
 
+// =====================================================================
+// GERENCIAMENTO DA INTELIGÊNCIA ARTIFICIAL (MARKDOWN NATIVO)
+// =====================================================================
+function renderIaMarkdown(text) {
+  if(!text) return "";
+  let htmlStr = escapeHtml(text);
+  
+  htmlStr = htmlStr.replace(/^- (.*?)$/gm, '<li style="margin-left: 20px;">$1</li>');
+  htmlStr = htmlStr.replace(/^\* (.*?)$/gm, '<li style="margin-left: 20px;">$1</li>');
+  htmlStr = htmlStr.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  htmlStr = htmlStr.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  htmlStr = htmlStr.replace(/^### (.*?)$/gm, '<h3 style="margin-top: 1em; color: var(--primary-dark);">$1</h3>');
+  htmlStr = htmlStr.replace(/^## (.*?)$/gm, '<h2 style="margin-top: 1em; color: var(--primary-dark); border-bottom: 1px solid var(--border);">$1</h2>');
+  htmlStr = htmlStr.replace(/^# (.*?)$/gm, '<h2 style="margin-top: 1em; color: var(--primary-dark);">$1</h2>');
+  htmlStr = htmlStr.replace(/\n(?!(?:<li|<h|<table|<thead|<tbody|<tr|<td|<th))/g, '<br>');
+
+  return `<div class="markdown-body">${htmlStr}</div>`;
+}
+
+function renderIaHistory() {
+   const container = $("ia-history-list");
+   if(!container) return;
+   if(!state.ia_reports || state.ia_reports.length === 0) {
+      container.innerHTML = '<div class="empty">Nenhum relatório de IA salvo neste projeto.</div>';
+      return;
+   }
+   container.innerHTML = state.ia_reports.map((rep, idx) => `
+      <div class="result" style="border-left-color: var(--primary-dark); background: var(--panel); margin-bottom: 1.5rem; box-shadow: var(--shadow);">
+        <div style="display:flex; justify-content:space-between; align-items:start; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 10px;">
+          <strong style="font-size:1.1rem; color:var(--text);">Pesquisa: ${escapeHtml(rep.query)}</strong>
+          <button class="danger remove-ia-report" data-index="${idx}" style="font-size:0.8rem; padding: 0.35rem 0.7rem;">Excluir</button>
+        </div>
+        <small class="muted" style="display:block; margin-bottom:10px;">Salvo em: ${rep.date}</small>
+        <div>${renderIaMarkdown(rep.content)}</div>
+      </div>
+   `).join("");
+
+   document.querySelectorAll('.remove-ia-report').forEach(btn => {
+       btn.addEventListener('click', (e) => {
+           if(confirm("Apagar este relatório permanentemente?")) {
+               state.ia_reports.splice(btn.dataset.index, 1);
+               saveLocal().then(() => {
+                   renderIaHistory();
+                   notify("Relatório excluído.");
+               }).catch(() => notify("Erro ao excluir.", true));
+           }
+       });
+   });
+}
+
 function renderAll() {
   renderStats(); renderActivity(); renderSources(); renderCodes(); renderCases(); renderMemos(); renderData(); renderStopwords();
   $("projectName").value = state.settings.projectName; $("maxPreview").value = state.settings.maxPreview; $("projectThemeColor").value = state.settings.projectColor;
@@ -1061,7 +1139,6 @@ async function runSuperAnalysis() {
     if (!state.cases || state.cases.length === 0 || !state.files || state.files.length === 0) { notify("É necessário ter Fontes e Cases", true); return; }
     superAnalysisData = { ponto1: [], ponto2: [], ponto3: {}, ponto4: [], ponto7: [] };
 
-    // P1, P2, P3, P4
     const point1Html = state.cases.map(c => {
       const tokens = tokenize(c.name); let totalScore = 0;
       const fScores = state.files.map(f => {
@@ -1447,9 +1524,7 @@ function initEvents() {
   $("closeHyperReportBtn").addEventListener("click", () => $("hyperReportModal").style.display = "none");
   $("executeHyperReportBtn").addEventListener("click", generateHyperReport);
 
-  // GAVETA DE IMPORTAÇÃO (Ajustada para o Android)
   $("importDataBtn").addEventListener("click", () => { 
-    // Abre a gaveta de arquivos imediatamente (sem bloqueios do Chrome)
     $("importDataFile").click(); 
   });
   
@@ -1457,9 +1532,8 @@ function initEvents() {
     const file = e.target.files[0]; 
     if (!file) return;
 
-    // Pede a senha DEPOIS de selecionar o arquivo, mas ANTES de ler os dados
     const storedHash = localStorage.getItem("cn_crypto_hash");
-    if (storedHash) {
+    if (storedHash && sessionStorage.getItem("cn_unlocked") !== "true") {
       const val = prompt("Ação restrita (Importação). Digite a senha:");
       if (val === null) { e.target.value = ""; return; }
       let hash = 0; for (let i = 0; i < val.length; i++) { hash = ((hash << 5) - hash) + val.charCodeAt(i); hash |= 0; }
@@ -1467,6 +1541,7 @@ function initEvents() {
         e.target.value = "";
         return notify("Acesso negado. Senha incorreta.", true);
       }
+      sessionStorage.setItem("cn_unlocked", "true");
     }
 
     runWithProgress("Importando Conjunto de Dados", 10, async () => {
@@ -1544,63 +1619,6 @@ function initEvents() {
   ["dragleave", "drop"].forEach(t => dZ.addEventListener(t, e => { e.preventDefault(); dZ.classList.remove("dragover"); }));
   dZ.addEventListener("drop", e => { state.pendingFiles = e.dataTransfer.files; $("fileInput").files = e.dataTransfer.files; notify(`${state.pendingFiles.length} selecionado(s)`); });
 
-  // =====================================================================
-  // GERENCIAMENTO DA INTELIGÊNCIA ARTIFICIAL (MARKDOWN NATIVO)
-  // =====================================================================
-
-  function renderIaMarkdown(text) {
-    if(!text) return "";
-    let htmlStr = escapeHtml(text);
-    
-    // Tratamento de Listas
-    htmlStr = htmlStr.replace(/^- (.*?)$/gm, '<li style="margin-left: 20px;">$1</li>');
-    htmlStr = htmlStr.replace(/^\* (.*?)$/gm, '<li style="margin-left: 20px;">$1</li>');
-    
-    // Tratamento de Negrito e Itálico
-    htmlStr = htmlStr.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    htmlStr = htmlStr.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    
-    // Tratamento de Cabeçalhos
-    htmlStr = htmlStr.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
-    htmlStr = htmlStr.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
-    htmlStr = htmlStr.replace(/^# (.*?)$/gm, '<h2>$1</h2>');
-
-    // Quebras de Linha para manter espaçamento
-    htmlStr = htmlStr.replace(/\n(?!(?:<li|<h|<table|<thead|<tbody|<tr|<td|<th))/g, '<br>');
-
-    return `<div class="markdown-body">${htmlStr}</div>`;
-  }
-
-  function renderIaHistory() {
-     const container = $("ia-history-list");
-     if(!container) return;
-     if(!state.ia_reports || state.ia_reports.length === 0) {
-        container.innerHTML = '<div class="empty">Nenhum relatório de IA salvo neste projeto.</div>';
-        return;
-     }
-     container.innerHTML = state.ia_reports.map((rep, idx) => `
-        <div class="result" style="border-left-color: var(--primary-dark); background: var(--panel); margin-bottom: 1.5rem; box-shadow: var(--shadow);">
-          <div style="display:flex; justify-content:space-between; align-items:start; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 10px;">
-            <strong style="font-size:1.1rem; color:var(--text);">Pesquisa: ${escapeHtml(rep.query)}</strong>
-            <button class="danger remove-ia-report" data-index="${idx}" style="font-size:0.8rem; padding: 0.35rem 0.7rem;">Excluir</button>
-          </div>
-          <small class="muted" style="display:block; margin-bottom:10px;">Salvo em: ${rep.date}</small>
-          <div>${renderIaMarkdown(rep.content)}</div>
-        </div>
-     `).join("");
-
-     document.querySelectorAll('.remove-ia-report').forEach(btn => {
-         btn.addEventListener('click', (e) => {
-             if(confirm("Apagar este relatório permanentemente?")) {
-                 state.ia_reports.splice(btn.dataset.index, 1);
-                 saveLocal();
-                 renderIaHistory();
-                 notify("Relatório excluído.");
-             }
-         });
-     });
-  }
-
   const iaConsent = document.getElementById('ia-consent');
   const iaControls = document.getElementById('ia-controls');
   const iaBtnSend = document.getElementById('ia-send-btn');
@@ -1609,130 +1627,133 @@ function initEvents() {
   let currentIaReportText = ""; 
   let currentIaReportQuery = "";
 
-  iaConsent.addEventListener('change', (e) => {
-    if (e.target.checked) {
-      iaControls.style.opacity = '1';
-      iaControls.style.pointerEvents = 'auto';
-    } else {
-      iaControls.style.opacity = '0.4';
-      iaControls.style.pointerEvents = 'none';
-      iaResponseBox.style.display = 'none';
-    }
-  });
-
-  iaBtnSend.addEventListener('click', async () => {
-    const apiKey = state.settings.geminiApiKey;
-    if (!apiKey) {
-      return notify("Erro: Cole sua Chave API do Gemini na aba 'Configuração'.", true);
-    }
-
-    const perguntaTexto = iaQuery.value.trim();
-    if (!perguntaTexto) {
-      notify("Defina a diretriz para a Inteligência Qualitativa.", true);
-      return iaQuery.focus();
-    }
-
-    iaBtnSend.disabled = true;
-    iaBtnSend.innerText = '⚗️ Filtrando dados e contatando IA (Aguarde)...';
-    iaResponseBox.style.display = 'none';
-
-    try {
-      notify("Otimizando palavras (RAG Local)...");
-      
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
-      const systemPrompt = `Você é um Analista de Dados Qualitativos Sênior. Responda à diretriz do usuário usando os metadados (Cases e Códigos) e os trechos filtrados das fontes. Estruture a resposta profissionalmente usando tabelas e listas sempre que necessário. Não invente dados.`;
-
-      const termosBusca = perguntaTexto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/\W+/).filter(w => w.length > 3);
-
-      const fontesOtimizadas = state.files.map(f => {
-        if (f.isSheet) return null;
-
-        const textoOriginal = f.content;
-        const paragrafos = textoOriginal.split('\n').filter(p => p.trim().length > 20);
-        let trechosUteis = [];
-
-        paragrafos.forEach(p => {
-           const pNorm = p.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-           if (termosBusca.some(t => pNorm.includes(t))) {
-               trechosUteis.push(p.trim());
-           }
-        });
-
-        let conteudoFinal = trechosUteis.length > 0 
-          ? trechosUteis.join(' [...] ').substring(0, 2000) 
-          : textoOriginal.substring(0, 500) + " [Trecho inicial. Resto omitido por não ter match direto com a pergunta].";
-
-        return { nome: f.name, trechos_do_texto: conteudoFinal };
-      }).filter(f => f !== null);
-
-      const projetoLimpo = {
-        fontes_filtradas: fontesOtimizadas,
-        codigos: state.codes,
-        cases: state.cases,
-        memos: state.memos
-      };
-
-      const requestBody = {
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{
-            role: "user",
-            parts: [{ text: `DIRETRIZ DA INVESTIGAÇÃO: ${perguntaTexto}\n\nDADOS DO PROJETO (JSON OTIMIZADO):\n${JSON.stringify(projetoLimpo)}` }]
-        }],
-        generationConfig: { temperature: 0.2 }
-      };
-
-      notify("Enviando pacote reduzido para a Google...");
-
-      const response = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+  if(iaConsent) {
+      iaConsent.addEventListener('change', (e) => {
+        if (e.target.checked) {
+          iaControls.style.opacity = '1';
+          iaControls.style.pointerEvents = 'auto';
+        } else {
+          iaControls.style.opacity = '0.4';
+          iaControls.style.pointerEvents = 'none';
+          iaResponseBox.style.display = 'none';
+        }
       });
 
-      if (!response.ok) {
-        const errorDetails = await response.json().catch(() => ({}));
-        const googleError = errorDetails.error?.message || response.statusText || 'Erro desconhecido';
-        throw new Error(`Google API: ${googleError}`);
-      }
+      iaBtnSend.addEventListener('click', async () => {
+        const apiKey = state.settings.geminiApiKey;
+        if (!apiKey) {
+          return notify("Erro: Cole sua Chave API do Gemini na aba 'Configuração'.", true);
+        }
 
-      const data = await response.json();
-      currentIaReportText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Nenhuma análise pôde ser formulada.';
-      currentIaReportQuery = perguntaTexto;
+        const perguntaTexto = iaQuery.value.trim();
+        if (!perguntaTexto) {
+          notify("Defina a diretriz para a Inteligência Qualitativa.", true);
+          return iaQuery.focus();
+        }
 
-      iaResponseBox.style.display = 'block';
-      iaResponseBox.innerHTML = `
-        <div style="display: flex; gap: 8px; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 15px;">
-           <span style="font-size: 1.2rem;">🔬</span>
-           <strong style="color: var(--primary-dark);">Relatório Analítico Metodológico:</strong>
-        </div>
-        ${renderIaMarkdown(currentIaReportText)}
-        <div style="margin-top: 20px; text-align: right; border-top: 1px solid var(--border); padding-top: 15px;">
-           <button id="ia-save-btn" class="success" style="padding: 0.8rem 1.5rem; font-size: 1rem;">💾 Salvar Relatório no Projeto</button>
-        </div>
-      `;
+        iaBtnSend.disabled = true;
+        iaBtnSend.innerText = '⚗️ Filtrando dados e contatando IA (Aguarde)...';
+        iaResponseBox.style.display = 'none';
 
-      document.getElementById('ia-save-btn').addEventListener('click', () => {
-         if(!state.ia_reports) state.ia_reports = [];
-         state.ia_reports.unshift({ query: currentIaReportQuery, content: currentIaReportText, date: new Date().toLocaleString("pt-BR") });
-         saveLocal();
-         renderIaHistory();
-         notify("Relatório salvo no histórico da IA.");
-         document.getElementById('ia-save-btn').style.display = 'none';
+        try {
+          notify("Otimizando palavras (RAG Local)...");
+          
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+          const systemPrompt = `Você é um Analista de Dados Qualitativos Sênior. Responda à diretriz do usuário usando os metadados (Cases e Códigos) e os trechos filtrados das fontes. Estruture a resposta profissionalmente usando tabelas e listas sempre que necessário. Não invente dados.`;
+
+          const termosBusca = perguntaTexto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/\W+/).filter(w => w.length > 3);
+
+          const fontesOtimizadas = state.files.map(f => {
+            if (f.isSheet) return null;
+
+            const textoOriginal = f.content;
+            const paragrafos = textoOriginal.split('\n').filter(p => p.trim().length > 20);
+            let trechosUteis = [];
+
+            paragrafos.forEach(p => {
+               const pNorm = p.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+               if (termosBusca.some(t => pNorm.includes(t))) {
+                   trechosUteis.push(p.trim());
+               }
+            });
+
+            let conteudoFinal = trechosUteis.length > 0 
+              ? trechosUteis.join(' [...] ').substring(0, 2000) 
+              : textoOriginal.substring(0, 500) + " [Trecho inicial. Resto omitido por não ter match direto com a pergunta].";
+
+            return { nome: f.name, trechos_do_texto: conteudoFinal };
+          }).filter(f => f !== null);
+
+          const projetoLimpo = {
+            fontes_filtradas: fontesOtimizadas,
+            codigos: state.codes,
+            cases: state.cases,
+            memos: state.memos
+          };
+
+          const requestBody = {
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents: [{
+                role: "user",
+                parts: [{ text: `DIRETRIZ DA INVESTIGAÇÃO: ${perguntaTexto}\n\nDADOS DO PROJETO (JSON OTIMIZADO):\n${JSON.stringify(projetoLimpo)}` }]
+            }],
+            generationConfig: { temperature: 0.2 }
+          };
+
+          notify("Enviando pacote reduzido para a Google...");
+
+          const response = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+          });
+
+          if (!response.ok) {
+            const errorDetails = await response.json().catch(() => ({}));
+            const googleError = errorDetails.error?.message || response.statusText || 'Erro desconhecido';
+            throw new Error(`Google API: ${googleError}`);
+          }
+
+          const data = await response.json();
+          currentIaReportText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Nenhuma análise pôde ser formulada.';
+          currentIaReportQuery = perguntaTexto;
+
+          iaResponseBox.style.display = 'block';
+          iaResponseBox.innerHTML = `
+            <div style="display: flex; gap: 8px; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 15px;">
+               <span style="font-size: 1.2rem;">🔬</span>
+               <strong style="color: var(--primary-dark);">Relatório Analítico Metodológico:</strong>
+            </div>
+            ${renderIaMarkdown(currentIaReportText)}
+            <div style="margin-top: 20px; text-align: right; border-top: 1px solid var(--border); padding-top: 15px;">
+               <button id="ia-save-btn" class="success" style="padding: 0.8rem 1.5rem; font-size: 1rem;">💾 Salvar Relatório no Projeto</button>
+            </div>
+          `;
+
+          document.getElementById('ia-save-btn').addEventListener('click', () => {
+             if(!state.ia_reports) state.ia_reports = [];
+             state.ia_reports.unshift({ query: currentIaReportQuery, content: currentIaReportText, date: new Date().toLocaleString("pt-BR") });
+             saveLocal().then(() => {
+                 renderIaHistory();
+                 notify("Relatório salvo no histórico da IA.");
+                 document.getElementById('ia-save-btn').style.display = 'none';
+             }).catch(() => notify("Erro ao salvar.", true));
+          });
+
+          notify("Relatório Qualitativo Sênior gerado com sucesso.");
+
+        } catch (err) {
+          console.error("[Front-end LLM Error]:", err);
+          notify("Ocorreu um erro no tráfego da API.", true);
+          iaResponseBox.style.display = 'block';
+          iaResponseBox.innerHTML = `<span style="color: var(--danger);"><strong>Erro de Conexão:</strong> ${escapeHtml(err.message)}</span>`;
+        } finally {
+          iaBtnSend.disabled = false;
+          iaBtnSend.innerText = 'Disparar Análise Sênior';
+        }
       });
-
-      notify("Relatório Qualitativo Sênior gerado com sucesso.");
-
-    } catch (err) {
-      console.error("[Front-end LLM Error]:", err);
-      notify("Ocorreu um erro no tráfego da API.", true);
-      iaResponseBox.style.display = 'block';
-      iaResponseBox.innerHTML = `<span style="color: var(--danger);"><strong>Erro de Conexão:</strong> ${escapeHtml(err.message)}</span>`;
-    } finally {
-      iaBtnSend.disabled = false;
-      iaBtnSend.innerText = 'Disparar Análise Sênior';
-    }
-  });
+  }
 }
 
 async function init() {
