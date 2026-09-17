@@ -275,7 +275,7 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
       <button class="secondary" id="saveBtn">Salvar projeto</button>
       <button class="secondary" id="restoreBtn">Restaurar</button>
       <button class="secondary" id="importDataBtn">Importar</button>
-      <input type="file" id="importDataFile" accept=".csv,.xlsx,.xls,.json" style="display:none">
+      <input type="file" id="importDataFile" accept=".json" style="display:none">
       <button id="triggerHyperReportBtn" style="background: #6c42d9; color: white;">Exportar Relatório</button>
     </div>
   </div>
@@ -586,7 +586,7 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
   <section class="view" id="autocode">
     <div class="card">
       <h2>Inteligência Qualitativa Avançada</h2>
-      <p class="muted">Classifique emoções automaticamente ou encontre os temas mais recorrentes ignorando palavras de descarte.</p>
+      <p class="muted">Classifique emoções automatically ou encontre os temas mais recorrentes ignorando palavras de descarte.</p>
       <div class="grid two">
         <div class="card" style="box-shadow:none; border-color:var(--border)">
           <h3>Codificação Automática</h3>
@@ -826,15 +826,6 @@ function initCrypto() {
     if(!storedHash) { localStorage.setItem("cn_crypto_hash", hash); modal.style.display = "none"; notify("Criptografia configurada."); }
     else { if(hash.toString() === storedHash) { modal.style.display = "none"; } else { notify("Senha incorreta!", true); } }
   });
-}
-
-async function verifyPasswordAction() {
-  const storedHash = localStorage.getItem("cn_crypto_hash"); if (!storedHash) return true;
-  const val = prompt("Ação restrita (Exportação/Criptografia). Digite a senha:");
-  if (val === null) return false;
-  let hash = 0; for (let i = 0; i < val.length; i++) { hash = ((hash << 5) - hash) + val.charCodeAt(i); hash |= 0; }
-  if (hash.toString() === storedHash) return true;
-  notify("Acesso negado. Senha incorreta.", true); return false;
 }
 
 function openDatabase() {
@@ -1456,19 +1447,28 @@ function initEvents() {
   $("closeHyperReportBtn").addEventListener("click", () => $("hyperReportModal").style.display = "none");
   $("executeHyperReportBtn").addEventListener("click", generateHyperReport);
 
+  // GAVETA DE IMPORTAÇÃO (Ajustada para o Android)
   $("importDataBtn").addEventListener("click", () => { 
-    const storedHash = localStorage.getItem("cn_crypto_hash");
-    if (storedHash) {
-      const val = prompt("Ação restrita (Importação). Digite a senha:");
-      if (val === null) return;
-      let hash = 0; for (let i = 0; i < val.length; i++) { hash = ((hash << 5) - hash) + val.charCodeAt(i); hash |= 0; }
-      if (hash.toString() !== storedHash) return notify("Acesso negado. Senha incorreta.", true);
-    }
+    // Abre a gaveta de arquivos imediatamente (sem bloqueios do Chrome)
     $("importDataFile").click(); 
   });
   
   $("importDataFile").addEventListener("change", async (e) => {
-    const file = e.target.files[0]; if (!file) return;
+    const file = e.target.files[0]; 
+    if (!file) return;
+
+    // Pede a senha DEPOIS de selecionar o arquivo, mas ANTES de ler os dados
+    const storedHash = localStorage.getItem("cn_crypto_hash");
+    if (storedHash) {
+      const val = prompt("Ação restrita (Importação). Digite a senha:");
+      if (val === null) { e.target.value = ""; return; }
+      let hash = 0; for (let i = 0; i < val.length; i++) { hash = ((hash << 5) - hash) + val.charCodeAt(i); hash |= 0; }
+      if (hash.toString() !== storedHash) {
+        e.target.value = "";
+        return notify("Acesso negado. Senha incorreta.", true);
+      }
+    }
+
     runWithProgress("Importando Conjunto de Dados", 10, async () => {
       try {
         if (file.name.endsWith(".json")) {
