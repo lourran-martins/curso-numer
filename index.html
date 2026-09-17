@@ -16,10 +16,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  
-  <!-- INJEÇÃO: Bibliotecas para Diagramação e Gráficos da IA -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@9.4.3/dist/mermaid.min.js"></script>
 </head> 
 
 <style>
@@ -201,17 +197,12 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
   position: absolute; top: 8px; right: 10px; font-size: 0.8rem; font-weight: bold; color: var(--text); background: var(--panel); padding: 2px 8px; border-radius: 4px; box-shadow: var(--shadow);
 }
 
-/* INJEÇÃO: Estilos para Diagramação Acadêmica da IA */
-.markdown-body { font-size: 1rem; line-height: 1.6; color: var(--text); font-family: inherit; }
-.markdown-body h2, .markdown-body h3 { color: var(--primary-dark); margin-top: 1.5em; margin-bottom: 0.5em; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+/* Estilos para Diagramação Acadêmica da IA */
+.markdown-body { font-size: 1rem; line-height: 1.6; color: var(--text); }
+.markdown-body h2, .markdown-body h3 { color: var(--primary-dark); margin-top: 1.2em; margin-bottom: 0.5em; border-bottom: 1px solid var(--border); padding-bottom: 0.2em; }
 .markdown-body p { margin-bottom: 1em; }
-.markdown-body table { width: 100%; border-collapse: collapse; margin: 1.5em 0; font-size: 0.9em; border: 1px solid var(--border); }
-.markdown-body th, .markdown-body td { border: 1px solid var(--border); padding: 10px; text-align: left; }
-.markdown-body th { background-color: var(--panel-2); font-weight: bold; }
-.markdown-body blockquote { margin: 1.5em 0; padding-left: 1em; border-left: 4px solid var(--primary); color: var(--muted); background: var(--panel-2); padding: 10px; border-radius: 0 8px 8px 0; }
-.markdown-body pre { background: #0d1117; color: #c9d1d9; padding: 16px; overflow: auto; border-radius: 8px; margin: 1.5em 0; }
-.markdown-body ul, .markdown-body ol { margin-bottom: 1.5em; padding-left: 2em; }
-.markdown-body code { background: var(--panel-2); padding: 0.2em 0.4em; border-radius: 4px; font-size: 0.9em; }
+.markdown-body ul { margin-bottom: 1em; padding-left: 20px; }
+.markdown-body li { margin-bottom: 0.3em; }
 
 @media (max-width: 700px) {
   .header-inner { align-items: flex-start; flex-direction: column; }
@@ -534,7 +525,7 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
             Analista de Inteligência Qualitativa (LLM)
           </h3>
           <p class="muted" style="font-size: 0.95rem;">
-            A análise utiliza a API do Google Gemini conectada diretamente pelo navegador. O algoritmo efetua filtragem semântica local (RAG) para não sobrecarregar os limites da nuvem. O relatório gera formatação Markdown e gráficos visuais (Mermaid).
+            A análise utiliza a API do Google Gemini conectada diretamente pelo navegador. O algoritmo efetua filtragem semântica local (RAG) para não sobrecarregar os limites da nuvem. O relatório gera formatação acadêmica estruturada.
           </p>
   
           <div style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin: 1.5rem 0;">
@@ -547,7 +538,7 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
           <div id="ia-controls" style="opacity: 0.4; pointer-events: none; transition: 0.3s ease;">
             <div class="field">
               <label for="ia-query">Diretriz da Investigação Metodológica</label>
-              <textarea id="ia-query" placeholder="Ex.: Analise Reinaldo e Rogério. Gere tabelas comparativas e um gráfico de pizza mostrando a proporção dos atributos." style="min-height: 100px; font-size: 1rem; padding: 1rem;"></textarea>
+              <textarea id="ia-query" placeholder="Ex.: Analise os casos X e Y. Escreva as semelhanças e crie uma tabela de compatibilidade." style="min-height: 100px; font-size: 1rem; padding: 1rem;"></textarea>
             </div>
             <button id="ia-send-btn" style="width: 100%; font-size: 1.1rem; padding: 1rem; background: var(--primary-dark);">
               Disparar Análise Sênior
@@ -763,7 +754,7 @@ const SENTIMENT_LEXICON = {
   neg: ["ruim","pessimo","mau","triste","morte","matar","assassinato","violencia","crime","dor","sofrimento","corrupcao","medo","odio","guerra","roubo","trafico","milicia","fuzil","arma","desaparecimento","criminoso","bandido","ilegal","injustica","golpe","vitima","quadrilha"]
 };
 
-// ESTADO GLOBAL DO APP (Ajustado para receber os novos relatórios da IA)
+// ESTADO GLOBAL DO APP 
 let state = {
   files: [], codes: [], cases: [], memos: [], activities: [], ia_reports: [],
   settings: {
@@ -820,7 +811,7 @@ function countOccurrences(text, term, sensitive = false) {
 
 function addActivity(message) {
   const now = new Date().toLocaleString("pt-BR");
-  state.activities.unshift(`${now} —${message}`); state.activities = state.activities.slice(0, 30);
+  state.activities.unshift(`${now} — ${message}`); state.activities = state.activities.slice(0, 30);
   renderActivity();
 }
 
@@ -944,9 +935,9 @@ function renderCodes() {
   if (!state.codes.length) { c.innerHTML = '<div class="empty">Nenhum código cadastrado.</div>'; return; }
   let html = "";
   state.codes.filter(x => !x.parentId).forEach(p => {
-    html += `<div class="result"><strong>${escapeHtml(p.name)}</strong><div>${escapeHtml(p.description \vert{}\vert{} "Sem desc")}</div><p style="margin-top:.5rem">${p.words.map(w => `<span class="badge primary">${escapeHtml(w)}</span>`).join(" ")}</p><button class="danger remove-code" style="margin-top:.5rem; font-size:.8rem" data-id="${p.id}">Excluir</button></div>`;
+    html += `<div class="result"><strong>${escapeHtml(p.name)}</strong><div>${escapeHtml(p.description || "Sem desc")}</div><p style="margin-top:.5rem">${p.words.map(w => `<span class="badge primary">${escapeHtml(w)}</span>`).join(" ")}</p><button class="danger remove-code" style="margin-top:.5rem; font-size:.8rem" data-id="${p.id}">Excluir</button></div>`;
     state.codes.filter(x => x.parentId === p.id).forEach(ch => {
-      html += `<div class="result node-child"><strong>↳ ${escapeHtml(ch.name)}</strong><div>${escapeHtml(ch.description \vert{}\vert{} "Sem desc")}</div><p style="margin-top:.5rem">${ch.words.map(w => `<span class="badge primary">${escapeHtml(w)}</span>`).join(" ")}</p><button class="danger remove-code" style="margin-top:.5rem; font-size:.8rem" data-id="${ch.id}">Excluir</button></div>`;
+      html += `<div class="result node-child"><strong>↳ ${escapeHtml(ch.name)}</strong><div>${escapeHtml(ch.description || "Sem desc")}</div><p style="margin-top:.5rem">${ch.words.map(w => `<span class="badge primary">${escapeHtml(w)}</span>`).join(" ")}</p><button class="danger remove-code" style="margin-top:.5rem; font-size:.8rem" data-id="${ch.id}">Excluir</button></div>`;
     });
   });
   c.innerHTML = html;
@@ -1051,7 +1042,7 @@ function addCode() {
     if (state.codes.some(c => normalize(c.name) === normalize(name) && c.parentId === pId)) return notify("Já existe nesta hierarquia", true);
     state.codes.push({ id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), parentId: pId || null, name, description: desc, words });
     $("codeName").value = ""; $("codeDescription").value = ""; $("codeWords").value = ""; $("codeParent").value = "";
-    addActivity(`Código${pId?' (filho)':''} criado:${name}`); renderAll(); saveLocal(); notify("Código inserido no livro");
+    addActivity(`Código${pId?' (filho)':''} criado: ${name}`); renderAll(); saveLocal(); notify("Código inserido no livro");
   });
 }
 
@@ -1086,7 +1077,7 @@ async function runSuperAnalysis() {
         let mT = 0, rep = 0; tokens.forEach(tk => { let occ = countOccurrences(f.content, tk); if(occ>0){mT++; rep+=occ;} });
         let coef = mT > 0 ? (mT/tokens.length)*rep : 0; totalScore += coef;
         superAnalysisData.ponto1.push({ Case: c.name, Fonte: f.name, Fragmentos: mT, Repeticoes: rep, Coeficiente: coef });
-        return `<li>${escapeHtml(f.name.substring(0,30))}... - Coef:${coef.toFixed(2)}</li>`;
+        return `<li>${escapeHtml(f.name.substring(0,30))}... - Coef: ${coef.toFixed(2)}</li>`;
       }).filter(str => !str.includes("Coef: 0.00"));
       return `<div class="result case-card"><strong>${escapeHtml(c.name)} - Rank: ${totalScore.toFixed(2)}</strong><ul style="margin:0; padding-left:20px; font-size:0.9rem;">${fScores.length ? fScores.join("") : "Nenhuma fonte relevante"}</ul></div>`;
     }).join("");
@@ -1098,12 +1089,12 @@ async function runSuperAnalysis() {
       let rH = rC.map(rc => {
         let shA = Object.keys(c.attributes).filter(k => rc.attributes[k] && rc.attributes[k] === c.attributes[k]).length;
         superAnalysisData.ponto2.push({ CaseA: c.name, CaseB: rc.name, AtributosEmComum: shA });
-        return `<li>Cruzou com <b>${escapeHtml(rc.name)}</b> (Attr:${shA})</li>`;
+        return `<li>Cruzou com <b>${escapeHtml(rc.name)}</b> (Attr: ${shA})</li>`;
       }).join("");
       return `<div class="result case-card"><strong>Case: ${escapeHtml(c.name)}</strong><ul style="margin:0; padding-left:20px; font-size:0.9rem;">${rH}</ul></div>`;
     }).join("");
 
-    let attrFreq = {}; state.cases.forEach(c => Object.keys(c.attributes).forEach(k => { let kV = `${k}:${c.attributes[k]}`; attrFreq[kV] = (attrFreq[kV]||0)+1; }));
+    let attrFreq = {}; state.cases.forEach(c => Object.keys(c.attributes).forEach(k => { let kV = `${k}: ${c.attributes[k]}`; attrFreq[kV] = (attrFreq[kV]||0)+1; }));
     superAnalysisData.ponto3 = attrFreq;
     let p3H = `<div class="table-wrap"><table><thead><tr><th>Atributo e Valor</th><th>Frequência</th></tr></thead><tbody>`;
     Object.keys(attrFreq).sort((a,b) => attrFreq[b]-attrFreq[a]).forEach(k => p3H += `<tr><td>${escapeHtml(k)}</td><td>${attrFreq[k]}</td></tr>`);
@@ -1157,7 +1148,7 @@ async function runSuperAnalysis() {
       const topConns = connections.slice(0, top25Count);
       superAnalysisData.ponto7.push({ Case: caseA.name, TopRelations: topConns });
       
-      const relHTML = topConns.map(conn => `<li><strong>${escapeHtml(conn.name)}</strong> <small class="muted">(Score: ${conn.score.toFixed(1)} \vert{} Fontes:${conn.f}, Atributos: ${conn.a}, Códigos: ${conn.c})</small></li>`).join("");
+      const relHTML = topConns.map(conn => `<li><strong>${escapeHtml(conn.name)}</strong> <small class="muted">(Score: ${conn.score.toFixed(1)} | Fontes: ${conn.f}, Atributos: ${conn.a}, Códigos: ${conn.c})</small></li>`).join("");
       return `<div class="result case-card" style="border-left-color: #0f9d58;">
         <strong>Conexões Tridimensionais de ${escapeHtml(caseA.name)}</strong>
         <p class="muted" style="font-size: 0.85rem; margin-top:2px;">Cruza aparição em fontes (a), atributos compartilhados (b) e alinhamento de códigos (c). Exibindo top ${top25Count} relacionados (25%).</p>
@@ -1173,7 +1164,7 @@ function generateSuperSummary() {
   const chk = document.querySelectorAll(".sa5-chk:checked"); if(chk.length === 0) return notify("Selecione um Case.", true);
   const selNames = Array.from(chk).map(c => c.value); const selCases = state.cases.filter(c => selNames.includes(c.name));
   let res = `<p><strong>Resumo Automático:</strong></p><p>Foram selecionados ${selCases.length} consolidações. `;
-  let aA = {}; selCases.forEach(c => Object.keys(c.attributes).forEach(k => { let v = c.attributes[k]; aA[`${k}:${v}`] = (aA[`${k}:${v}`]||0)+1; }));
+  let aA = {}; selCases.forEach(c => Object.keys(c.attributes).forEach(k => { let v = c.attributes[k]; aA[`${k}: ${v}`] = (aA[`${k}: ${v}`]||0)+1; }));
   const c = Object.keys(aA).filter(k => aA[k] > 1);
   if(c.length > 0) res += `Forte intersecção nos atributos: <em>${c.join(", ")}</em>, indicando proximidade analítica. `;
   else res += `Elevada dispersão de atributos, sem marcadores fortes. `;
@@ -1198,7 +1189,7 @@ function executeCross() {
     const rows = state.files.map(f => ({ arquivo: f.name, [a]: matchesTerm(f, a) ? "sim" : "não", [b]: matchesTerm(f, b) ? "sim" : "não", coexistem: matchesTerm(f, a) && matchesTerm(f, b) ? "sim" : "não" }));
     state.lastCross = rows; const total = rows.filter(r => r.coexistem === "sim").length;
     $("crossResults").innerHTML = `<p><span class="badge primary">${total} fonte(s) com coexistência</span></p><div class="table-wrap"><table><thead><tr><th>Arquivo</th><th>A</th><th>B</th><th>Coexistência</th></tr></thead><tbody>${rows.map(r => `<tr><td>${escapeHtml(r.arquivo)}</td><td>${r[a]}</td><td>${r[b]}</td><td><strong>${r.coexistem}</strong></td></tr>`).join("")}</tbody></table></div>`;
-    addActivity(`Cruzamento: ${a} ×${b}`);
+    addActivity(`Cruzamento: ${a} × ${b}`);
   });
 }
 
@@ -1544,20 +1535,30 @@ function initEvents() {
   dZ.addEventListener("drop", e => { state.pendingFiles = e.dataTransfer.files; $("fileInput").files = e.dataTransfer.files; notify(`${state.pendingFiles.length} selecionado(s)`); });
 
   // =====================================================================
-  // GERENCIAMENTO DA INTELIGÊNCIA ARTIFICIAL (MARKDOWN E GRÁFICOS)
+  // GERENCIAMENTO DA INTELIGÊNCIA ARTIFICIAL (MARKDOWN NATIVO)
   // =====================================================================
-
-  mermaid.initialize({ startOnLoad: false, theme: 'default' });
 
   function renderIaMarkdown(text) {
     if(!text) return "";
-    let html = marked.parse(text);
-    // Intercepta os blocos de código Mermaid gerados pela IA e os converte em divs renderizáveis
-    html = html.replace(/<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g, function(match, p1) {
-      let unescaped = p1.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
-      return `<div class="mermaid">${unescaped}</div>`;
-    });
-    return `<div class="markdown-body">${html}</div>`;
+    let htmlStr = escapeHtml(text);
+    
+    // Tratamento de Listas
+    htmlStr = htmlStr.replace(/^- (.*?)$/gm, '<li style="margin-left: 20px;">$1</li>');
+    htmlStr = htmlStr.replace(/^\* (.*?)$/gm, '<li style="margin-left: 20px;">$1</li>');
+    
+    // Tratamento de Negrito e Itálico
+    htmlStr = htmlStr.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    htmlStr = htmlStr.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    
+    // Tratamento de Cabeçalhos
+    htmlStr = htmlStr.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
+    htmlStr = htmlStr.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
+    htmlStr = htmlStr.replace(/^# (.*?)$/gm, '<h2>$1</h2>');
+
+    // Quebras de Linha para manter espaçamento
+    htmlStr = htmlStr.replace(/\n(?!(?:<li|<h|<table|<thead|<tbody|<tr|<td|<th))/g, '<br>');
+
+    return `<div class="markdown-body">${htmlStr}</div>`;
   }
 
   function renderIaHistory() {
@@ -1577,13 +1578,10 @@ function initEvents() {
           <div>${renderIaMarkdown(rep.content)}</div>
         </div>
      `).join("");
-     
-     // Renderiza os gráficos do histórico
-     setTimeout(() => { try { mermaid.init(undefined, container.querySelectorAll('.mermaid')); } catch(e){} }, 100);
 
      document.querySelectorAll('.remove-ia-report').forEach(btn => {
          btn.addEventListener('click', (e) => {
-             if(confirm("Apagar este relatório?")) {
+             if(confirm("Apagar este relatório permanentemente?")) {
                  state.ia_reports.splice(btn.dataset.index, 1);
                  saveLocal();
                  renderIaHistory();
@@ -1633,8 +1631,7 @@ function initEvents() {
       
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-      const systemPrompt = `Você é um Analista de Dados Qualitativos Sênior. Responda à diretriz do usuário usando os metadados (Cases e Códigos) e os trechos filtrados das fontes. Estruture a resposta profissionalmente. Não invente dados.
-      MUITO IMPORTANTE: Sempre que for solicitado ou útil apresentar fluxos, porcentagens ou relações sistêmicas, gere gráficos e diagramas usando APENAS blocos de código com a sintaxe \`\`\`mermaid (Exemplos suportados: pie, bar, graph TD, etc.) para que o front-end renderize visualmente.`;
+      const systemPrompt = `Você é um Analista de Dados Qualitativos Sênior. Responda à diretriz do usuário usando os metadados (Cases e Códigos) e os trechos filtrados das fontes. Estruture a resposta profissionalmente usando tabelas e listas sempre que necessário. Não invente dados.`;
 
       const termosBusca = perguntaTexto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/\W+/).filter(w => w.length > 3);
 
@@ -1704,9 +1701,6 @@ function initEvents() {
            <button id="ia-save-btn" class="success" style="padding: 0.8rem 1.5rem; font-size: 1rem;">💾 Salvar Relatório no Projeto</button>
         </div>
       `;
-      
-      // Renderiza os gráficos da resposta atual
-      setTimeout(() => { try { mermaid.init(undefined, document.querySelectorAll('.mermaid')); } catch(e){} }, 100);
 
       document.getElementById('ia-save-btn').addEventListener('click', () => {
          if(!state.ia_reports) state.ia_reports = [];
@@ -1714,7 +1708,7 @@ function initEvents() {
          saveLocal();
          renderIaHistory();
          notify("Relatório salvo no histórico da IA.");
-         document.getElementById('ia-save-btn').style.display = 'none'; // Esconde após salvar
+         document.getElementById('ia-save-btn').style.display = 'none';
       });
 
       notify("Relatório Qualitativo Sênior gerado com sucesso.");
