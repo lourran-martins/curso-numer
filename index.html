@@ -459,6 +459,7 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
         <button data-target="sa-resumo">5. Resumo Interativo</button>
         <button data-target="sa-graficos">6. Matrizes e Gráficos</button>
         <button data-target="sa-top25" style="border-color: #6c42d9; color: #6c42d9; font-weight: bold;">7. Intersecção Tríplice (Top 25%)</button>
+        
         <button data-target="sa-ia" style="border-color: #1557ba; color: #1557ba; font-weight: bold; margin-left: 0.5rem; background-color: #eef2f5;">8. Analista de IA</button>
       </div>
 
@@ -510,27 +511,27 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
         <div id="sa7-results" class="empty">Execute a análise para extrair as super-relações de cases baseadas em (a) Fontes comuns, (b) Atributos, (c) Códigos.</div>
       </div>
 
-      <!-- PAINEL DA IA (Atualizado) -->
+      <!-- PAINEL DA IA -->
       <div id="sa-ia" class="super-subview">
         <div class="card" style="border: 2px solid var(--primary-dark); background: var(--panel-2); margin-top: 1rem;">
           <h3 style="color: var(--primary-dark); margin-top: 0; display: flex; align-items: center; gap: 8px;">
             Analista de Inteligência Qualitativa (LLM)
           </h3>
           <p class="muted" style="font-size: 0.95rem;">
-            A análise utiliza a API do Google Gemini conectada diretamente pelo navegador. Certifique-se de configurar sua Chave de API na aba de "Configuração".
+            A análise utiliza a API do Google Gemini conectada diretamente pelo navegador. Certifique-se de configurar sua Chave de API na aba de "Configuração". O algoritmo efetua filtragem semântica local (RAG) para projetos grandes.
           </p>
   
           <div style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin: 1.5rem 0;">
             <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.95rem; font-weight: 600;">
               <input type="checkbox" id="ia-consent" style="width: 20px; height: 20px; margin-top: 2px;">
-              <span>Declaro meu consentimento obrigatório para serializar e enviar os dados deste projeto aos servidores da Google (Gemini API) para fins de inferência qualitativa.</span>
+              <span>Declaro meu consentimento obrigatório para serializar e enviar os dados relevantes deste projeto aos servidores da Google (Gemini API) para fins de inferência qualitativa.</span>
             </label>
           </div>
   
           <div id="ia-controls" style="opacity: 0.4; pointer-events: none; transition: 0.3s ease;">
             <div class="field">
               <label for="ia-query">Diretriz da Investigação Metodológica</label>
-              <textarea id="ia-query" placeholder="Ex.: O que os casos X e Y têm em comum?" style="min-height: 100px; font-size: 1rem; padding: 1rem;"></textarea>
+              <textarea id="ia-query" placeholder="Ex.: Analise Reinaldo e Rogério." style="min-height: 100px; font-size: 1rem; padding: 1rem;"></textarea>
             </div>
             <button id="ia-send-btn" style="width: 100%; font-size: 1.1rem; padding: 1rem; background: var(--primary-dark);">
               Disparar Análise Sênior
@@ -1077,7 +1078,7 @@ async function runSuperAnalysis() {
       return `<div class="result case-card"><strong>Case: ${escapeHtml(c.name)}</strong><ul style="margin:0; padding-left:20px; font-size:0.9rem;">${rH}</ul></div>`;
     }).join("");
 
-    let attrFreq = {}; state.cases.forEach(c => Object.keys(c.attributes).forEach(k => { let kV = `${k}: ${c.attributes[k]}`; attrFreq[kV] = (attrFreq[kV]||0)+1; }));
+    let attrFreq = {}; state.cases.forEach(c => Object.keys(c.attributes).forEach(k => { let kV = `${k}: ${c.attributes[k]}`; attrFreq[kV] = (attrFreq[kV]||0)+1; });
     superAnalysisData.ponto3 = attrFreq;
     let p3H = `<div class="table-wrap"><table><thead><tr><th>Atributo e Valor</th><th>Frequência</th></tr></thead><tbody>`;
     Object.keys(attrFreq).sort((a,b) => attrFreq[b]-attrFreq[a]).forEach(k => p3H += `<tr><td>${escapeHtml(k)}</td><td>${attrFreq[k]}</td></tr>`);
@@ -1556,24 +1557,45 @@ function initEvents() {
     }
 
     iaBtnSend.disabled = true;
-    iaBtnSend.innerText = '⚗️ Processando dados e contatando IA (Aguarde)...';
+    iaBtnSend.innerText = '⚗️ Filtrando dados e contatando IA (Aguarde)...';
     iaResponseBox.style.display = 'none';
 
     try {
-      notify("Preparando pacote de dados...");
+      notify("Otimizando as 39 mil palavras (RAG Local)...");
       
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-      const systemPrompt = `Você é um Analista de Dados Qualitativos Sênior rigoroso. Analise o corpus de pesquisa estruturado em JSON de forma cartesiana.
-      Regras absolutas:
-      1. Leia estritamente o corpus. Não invente fatos externos.
-      2. Cruze as fontes ('files') com o livro de códigos ('codes') e os metadados ('cases').
-      3. Responda à pergunta baseando-se ipsis litteris nos dados do JSON.
-      4. Estruture a resposta em Markdown de forma acadêmica e consolidada.`;
+      const systemPrompt = `Você é um Analista de Dados Qualitativos Sênior. Responda à diretriz do usuário usando os metadados (Cases e Códigos) e os trechos filtrados das fontes. Estruture a resposta em Markdown. Não invente dados.`;
 
-      // Filtro para reduzir tamanho: evita enviar janelas de configurações e manda só os dados que importam
+      // RAG (Buscador Semântico) direto no Navegador
+      const termosBusca = perguntaTexto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/\W+/).filter(w => w.length > 3);
+
+      const fontesOtimizadas = state.files.map(f => {
+        if (f.isSheet) return null;
+
+        const textoOriginal = f.content;
+        const paragrafos = textoOriginal.split('\n').filter(p => p.trim().length > 20);
+        let trechosUteis = [];
+
+        paragrafos.forEach(p => {
+           const pNorm = p.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+           if (termosBusca.some(t => pNorm.includes(t))) {
+               trechosUteis.push(p.trim());
+           }
+        });
+
+        let conteudoFinal = trechosUteis.length > 0 
+          ? trechosUteis.join(' [...] ').substring(0, 2000) 
+          : textoOriginal.substring(0, 500) + " [Trecho inicial. Resto do texto omitido por irrelevância à pergunta].";
+
+        return {
+          nome: f.name,
+          trechos_do_texto: conteudoFinal
+        };
+      }).filter(f => f !== null);
+
       const projetoLimpo = {
-        fontes: state.files.map(f => ({ nome: f.name, conteudo: f.content, ehPlanilha: f.isSheet })),
+        fontes_filtradas: fontesOtimizadas,
         codigos: state.codes,
         cases: state.cases,
         memos: state.memos
@@ -1583,12 +1605,12 @@ function initEvents() {
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: [{
             role: "user",
-            parts: [{ text: `DIRETRIZ DA INVESTIGAÇÃO: ${perguntaTexto}\n\nDADOS DO PROJETO (JSON):\n${JSON.stringify(projetoLimpo)}` }]
+            parts: [{ text: `DIRETRIZ DA INVESTIGAÇÃO: ${perguntaTexto}\n\nDADOS DO PROJETO (JSON OTIMIZADO):\n${JSON.stringify(projetoLimpo)}` }]
         }],
         generationConfig: { temperature: 0.2 }
       };
 
-      notify("Enviando pacote para a Google...");
+      notify("Enviando pacote reduzido para a Google...");
 
       const response = await fetch(geminiUrl, {
         method: 'POST',
@@ -1597,10 +1619,9 @@ function initEvents() {
       });
 
       if (!response.ok) {
-        // Captura o erro exato do servidor da Google para ajudar no diagnóstico
         const errorDetails = await response.json().catch(() => ({}));
         const googleError = errorDetails.error?.message || response.statusText || 'Erro desconhecido';
-        throw new Error(`Google API [Status ${response.status}]: ${googleError}`);
+        throw new Error(`Google API: ${googleError}`);
       }
 
       const data = await response.json();
@@ -1622,12 +1643,7 @@ function initEvents() {
       iaResponseBox.style.display = 'block';
       iaResponseBox.innerHTML = `
         <span style="color: var(--danger);">
-          <strong>Erro de Conexão:</strong> ${escapeHtml(err.message)}<br>
-          <small style="display:block; margin-top:10px; color: var(--text);">
-            <strong>Possíveis causas:</strong><br>
-            1. A Chave API informada é de um tipo inválido.<br>
-            2. O seu projeto possui textos gigantescos que ultrapassam o limite de pacote da internet.
-          </small>
+          <strong>Erro de Conexão:</strong> ${escapeHtml(err.message)}
         </span>
       `;
     } finally {
