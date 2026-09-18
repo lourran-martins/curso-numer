@@ -1615,7 +1615,7 @@ function initEvents() {
       };
 
       const requestBody = {
-        model: 'meta-llama/llama-3.3-70b-instruct:free',
+        model: 'google/gemini-2.0-flash-lite-preview-02-05:free', // Modelo atualizado para a versão gratuita mais robusta
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `DIRETRIZ DA INVESTIGAÇÃO: ${perguntaTexto}\n\nDADOS DO PROJETO (JSON OTIMIZADO):\n${JSON.stringify(projetoLimpo)}` }
@@ -1685,7 +1685,7 @@ function initEvents() {
     }
   });
 
-} // <<< Chave de fechamento essencial adicionada aqui
+}
 
 async function init() {
   initCrypto();
