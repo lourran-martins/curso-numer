@@ -1615,7 +1615,7 @@ function initEvents() {
       };
 
       const requestBody = {
-        model: 'google/gemini-2.0-flash-lite-preview-02-05:free', // Modelo atualizado para a versão gratuita mais robusta
+        model: 'poolside/laguna-s-2.1:free', // Atualizado para o Laguna S 2.1 (Free) da Poolside
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `DIRETRIZ DA INVESTIGAÇÃO: ${perguntaTexto}\n\nDADOS DO PROJETO (JSON OTIMIZADO):\n${JSON.stringify(projetoLimpo)}` }
