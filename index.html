@@ -1658,8 +1658,8 @@ function initEvents() {
       try {
         notify("Otimizando palavras (RAG Local)...");
         
-        const geminiModel = 'gemini-flash-latest';
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`;
+        // CORREÇÃO: Utilizando a URL direta para o modelo gemini-1.5-flash
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
         const systemPrompt = `Você é um Analista de Dados Qualitativos Sênior. Responda à diretriz do usuário usando os metadados (Cases e Códigos) e os trechos filtrados das fontes. Estruture a resposta profissionalmente usando tabelas e listas sempre que necessário. Não invente dados.`;
 
@@ -1706,7 +1706,7 @@ function initEvents() {
 
         const response = await fetch(geminiUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-goog-api-key': apiKey },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(requestBody)
         });
 
