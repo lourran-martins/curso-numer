@@ -1558,10 +1558,11 @@ function initEvents() {
     }
   });
 
-  iaBtnSend.addEventListener('click', async () => {
+    iaBtnSend.addEventListener('click', async () => {
+    // A chave continua sendo resgatada do mesmo campo do seu aplicativo
     const apiKey = state.settings.geminiApiKey;
     if (!apiKey) {
-      return notify("Erro: Cole sua Chave API do Gemini na aba 'Configuração'.", true);
+      return notify("Erro: Cole sua Chave API do OpenRouter na aba 'Configuração'.", true);
     }
 
     const perguntaTexto = iaQuery.value.trim();
@@ -1577,7 +1578,7 @@ function initEvents() {
     try {
       notify("Otimizando as palavras-chave (RAG Local)...");
       
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+      const openRouterUrl = `https://openrouter.ai/api/v1/chat/completions`;
 
       const systemPrompt = `Você é um Analista de Dados Qualitativos Sênior. Responda à diretriz do usuário usando os metadados (Cases e Códigos) e os trechos filtrados das fontes. Estruture a resposta em Markdown. Não invente dados.`;
 
@@ -1614,31 +1615,39 @@ function initEvents() {
         memos: state.memos
       };
 
+      // Corpo da requisição no padrão OpenAI suportado pelo OpenRouter
       const requestBody = {
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{
-            role: "user",
-            parts: [{ text: `DIRETRIZ DA INVESTIGAÇÃO: ${perguntaTexto}\n\nDADOS DO PROJETO (JSON OTIMIZADO):\n${JSON.stringify(projetoLimpo)}` }]
-        }],
-        generationConfig: { temperature: 0.2 }
+        model: 'meta-llama/llama-3.3-70b-instruct:free',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `DIRETRIZ DA INVESTIGAÇÃO: ${perguntaTexto}\n\nDADOS DO PROJETO (JSON OTIMIZADO):\n${JSON.stringify(projetoLimpo)}` }
+        ],
+        temperature: 0.2
       };
 
-      notify("Enviando pacote reduzido para a Google...");
+      notify("Enviando pacote reduzido via OpenRouter...");
 
-      const response = await fetch(geminiUrl, {
+      const response = await fetch(openRouterUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': window.location.href, // Resgata a URL atual para os rankings do OpenRouter
+          'X-Title': state.settings.projectName || 'Curso & Numeração Offline', 
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
         const errorDetails = await response.json().catch(() => ({}));
-        const googleError = errorDetails.error?.message || response.statusText || 'Erro desconhecido';
-        throw new Error(`Google API: ${googleError}`);
+        const apiError = errorDetails.error?.message || response.statusText || 'Erro desconhecido';
+        throw new Error(`OpenRouter API: ${apiError}`);
       }
 
       const data = await response.json();
-      const textoResposta = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Nenhuma análise pôde ser formulada pelos dados fornecidos.';
+      
+      // O caminho para encontrar o texto da resposta também muda no padrão OpenRouter
+      const textoResposta = data.choices?.[0]?.message?.content || 'Nenhuma análise pôde ser formulada pelos dados fornecidos.';
 
       iaResponseBox.style.display = 'block';
       iaResponseBox.innerHTML = `
@@ -1679,7 +1688,7 @@ function initEvents() {
       iaBtnSend.innerText = 'Disparar Análise Sênior';
     }
   });
-}
+
 
 async function init() {
   initCrypto();
