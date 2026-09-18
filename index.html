@@ -1658,7 +1658,31 @@ function initEvents() {
       try {
         notify("Otimizando palavras (RAG Local)...");
         
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        const modelsResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        if (!modelsResponse.ok) {
+          const modelsError = await modelsResponse.json().catch(() => ({}));
+          const modelsMessage = modelsError.error?.message || modelsResponse.statusText || 'Não foi possível consultar os modelos disponíveis.';
+          throw new Error(`Google API (Modelos): ${modelsMessage}`);
+        }
+
+        const modelsData = await modelsResponse.json();
+        const availableModels = (modelsData.models || []).filter(model =>
+          Array.isArray(model.supportedGenerationMethods) && model.supportedGenerationMethods.includes('generateContent')
+        );
+        if (!availableModels.length) {
+          throw new Error('A chave de API não disponibilizou nenhum modelo compatível com generateContent.');
+        }
+
+        const geminiModel = availableModels.sort((a, b) => {
+          const aName = String(a.name || '').toLowerCase();
+          const bName = String(b.name || '').toLowerCase();
+          const aFlash = aName.includes('flash') ? 1 : 0;
+          const bFlash = bName.includes('flash') ? 1 : 0;
+          if (aFlash !== bFlash) return bFlash - aFlash;
+          return bName.localeCompare(aName, undefined, { numeric: true });
+        })[0].name.replace(/^models\//, '');
+
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
 
         const systemPrompt = `Você é um Analista de Dados Qualitativos Sênior. Responda à diretriz do usuário usando os metadados (Cases e Códigos) e os trechos filtrados das fontes. Estruture a resposta profissionalmente usando tabelas e listas sempre que necessário. Não invente dados.`;
 
