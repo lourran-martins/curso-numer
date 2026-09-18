@@ -31,9 +31,9 @@ Camada de Proteção Intradispositivo: O acesso ao aplicativo e à leitura do In
 
 2.2. Operação do Módulo de Inteligência Artificial (LLM)
 
-A integração com o modelo de linguagem do Google Gemini ocorre sob os mais estritos padrões de controle de fluxo de dados, exigindo consentimento explícito.
+A integração com o modelo de linguagem ocorre sob os mais estritos padrões de controle de fluxo de dados, exigindo consentimento explícito.
 
-Chave de API Privada (BYOK - Bring Your Own Key): O aplicativo não fornece chaves globais. O usuário deve gerar sua credencial (AIzaSy...) diretamente no Google AI Studio e inseri-la na plataforma. A chave permanece armazenada apenas na memória local do aparelho.
+Chave de API Privada (BYOK - Bring Your Own Key): O aplicativo não fornece chaves globais. O usuário deve gerar sua credencial (AIzaSy...) diretamente no OpenRouter e inseri-la na plataforma. A chave permanece armazenada apenas na memória local do aparelho.
 
 Filtragem Semântica Local (RAG): Para proteger o sigilo das fontes brutas e otimizar limites de pacotes de dados, o aplicativo não envia o corpus integral para a nuvem. O algoritmo de Inteligência Qualitativa fragmenta os textos offline, isola os parágrafos relevantes à pergunta formulada, exclui termos de descarte (Stopwords) e envia unicamente a amostragem cirúrgica consolidada para a API.
 
