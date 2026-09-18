@@ -17,7 +17,7 @@ Engenharia Qualitativa: Criação de árvores de Códigos (Nós) e atributos de 
 
 Análise Estatística e Heurística: Geração de Matrizes de coocorrência, cálculo de Equação de Compatibilidade de Jaccard e Super Análise Textual tridimensional.
 
-Inteligência Artificial (Módulo IA): Integração Serverless com a API do Google Gemini, operando mediante RAG (Busca e Geração Aumentada) estritamente local, com renderização de diagramas dinâmicos.
+Inteligência Artificial (Módulo IA): Integração Serverless com a API do OpenRouter, operando mediante RAG (Busca e Geração Aumentada) estritamente local, com renderização de diagramas dinâmicos.
 
 2. Política de Privacidade e Tratamento de Dados (Compliance)
 
