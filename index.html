@@ -518,7 +518,7 @@ footer { max-width: 1500px; margin: auto; padding: 1rem 1.25rem 2rem; color: var
         <div id="sa7-results" class="empty">Execute a análise para extrair as super-relações de cases baseadas em (a) Fontes comuns, (b) Atributos, (c) Códigos.</div>
       </div>
 
-      <!-- PAINEL DA IA -->
+      <!-- PAINEL DA IA (Restaurado para a versão estável) -->
       <div id="sa-ia" class="super-subview">
         <div class="card" style="border: 2px solid var(--primary-dark); background: var(--panel-2); margin-top: 1rem;">
           <h3 style="color: var(--primary-dark); margin-top: 0; display: flex; align-items: center; gap: 8px;">
@@ -829,12 +829,12 @@ function initCrypto() {
     let hash = 0; for (let i = 0; i < val.length; i++) { hash = ((hash << 5) - hash) + val.charCodeAt(i); hash |= 0; }
     if(!storedHash) { 
       localStorage.setItem("cn_crypto_hash", hash); 
-      sessionStorage.setItem("cn_unlocked", "true"); // Desbloqueia sessão de salvamento
+      sessionStorage.setItem("cn_unlocked", "true"); 
       modal.style.display = "none"; notify("Criptografia configurada."); 
     }
     else { 
       if(hash.toString() === storedHash) { 
-        sessionStorage.setItem("cn_unlocked", "true"); // Desbloqueia sessão de salvamento
+        sessionStorage.setItem("cn_unlocked", "true"); 
         modal.style.display = "none"; 
       } else { notify("Senha incorreta!", true); } 
     }
@@ -844,7 +844,7 @@ function initCrypto() {
 async function verifyPasswordAction() {
   const storedHash = localStorage.getItem("cn_crypto_hash"); 
   if (!storedHash) return true;
-  if (sessionStorage.getItem("cn_unlocked") === "true") return true; // Ignora prompt se já logado
+  if (sessionStorage.getItem("cn_unlocked") === "true") return true; 
 
   const val = prompt("Ação restrita. Digite a senha:");
   if (val === null) return false;
@@ -1627,132 +1627,132 @@ function initEvents() {
   let currentIaReportText = ""; 
   let currentIaReportQuery = "";
 
-  if(iaConsent) {
-      iaConsent.addEventListener('change', (e) => {
-        if (e.target.checked) {
-          iaControls.style.opacity = '1';
-          iaControls.style.pointerEvents = 'auto';
-        } else {
-          iaControls.style.opacity = '0.4';
-          iaControls.style.pointerEvents = 'none';
-          iaResponseBox.style.display = 'none';
-        }
-      });
-
-      iaBtnSend.addEventListener('click', async () => {
-        const apiKey = state.settings.geminiApiKey;
-        if (!apiKey) {
-          return notify("Erro: Cole sua Chave API do Gemini na aba 'Configuração'.", true);
-        }
-
-        const perguntaTexto = iaQuery.value.trim();
-        if (!perguntaTexto) {
-          notify("Defina a diretriz para a Inteligência Qualitativa.", true);
-          return iaQuery.focus();
-        }
-
-        iaBtnSend.disabled = true;
-        iaBtnSend.innerText = '⚗️ Filtrando dados e contatando IA (Aguarde)...';
+  if (iaConsent) {
+    iaConsent.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        iaControls.style.opacity = '1';
+        iaControls.style.pointerEvents = 'auto';
+      } else {
+        iaControls.style.opacity = '0.4';
+        iaControls.style.pointerEvents = 'none';
         iaResponseBox.style.display = 'none';
+      }
+    });
 
-        try {
-          notify("Otimizando palavras (RAG Local)...");
-          
-          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    iaBtnSend.addEventListener('click', async () => {
+      const apiKey = state.settings.geminiApiKey;
+      if (!apiKey) {
+        return notify("Erro: Cole sua Chave API do Gemini na aba 'Configuração'.", true);
+      }
 
-          const systemPrompt = `Você é um Analista de Dados Qualitativos Sênior. Responda à diretriz do usuário usando os metadados (Cases e Códigos) e os trechos filtrados das fontes. Estruture a resposta profissionalmente usando tabelas e listas sempre que necessário. Não invente dados.`;
+      const perguntaTexto = iaQuery.value.trim();
+      if (!perguntaTexto) {
+        notify("Defina a diretriz para a Inteligência Qualitativa.", true);
+        return iaQuery.focus();
+      }
 
-          const termosBusca = perguntaTexto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/\W+/).filter(w => w.length > 3);
+      iaBtnSend.disabled = true;
+      iaBtnSend.innerText = '⚗️ Filtrando dados e contatando IA (Aguarde)...';
+      iaResponseBox.style.display = 'none';
 
-          const fontesOtimizadas = state.files.map(f => {
-            if (f.isSheet) return null;
+      try {
+        notify("Otimizando palavras (RAG Local)...");
+        
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-            const textoOriginal = f.content;
-            const paragrafos = textoOriginal.split('\n').filter(p => p.trim().length > 20);
-            let trechosUteis = [];
+        const systemPrompt = `Você é um Analista de Dados Qualitativos Sênior. Responda à diretriz do usuário usando os metadados (Cases e Códigos) e os trechos filtrados das fontes. Estruture a resposta profissionalmente usando tabelas e listas sempre que necessário. Não invente dados.`;
 
-            paragrafos.forEach(p => {
-               const pNorm = p.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-               if (termosBusca.some(t => pNorm.includes(t))) {
-                   trechosUteis.push(p.trim());
-               }
-            });
+        const termosBusca = perguntaTexto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/\W+/).filter(w => w.length > 3);
 
-            let conteudoFinal = trechosUteis.length > 0 
-              ? trechosUteis.join(' [...] ').substring(0, 2000) 
-              : textoOriginal.substring(0, 500) + " [Trecho inicial. Resto omitido por não ter match direto com a pergunta].";
+        const fontesOtimizadas = state.files.map(f => {
+          if (f.isSheet) return null;
 
-            return { nome: f.name, trechos_do_texto: conteudoFinal };
-          }).filter(f => f !== null);
+          const textoOriginal = f.content;
+          const paragrafos = textoOriginal.split('\n').filter(p => p.trim().length > 20);
+          let trechosUteis = [];
 
-          const projetoLimpo = {
-            fontes_filtradas: fontesOtimizadas,
-            codigos: state.codes,
-            cases: state.cases,
-            memos: state.memos
-          };
-
-          const requestBody = {
-            system_instruction: { parts: [{ text: systemPrompt }] },
-            contents: [{
-                role: "user",
-                parts: [{ text: `DIRETRIZ DA INVESTIGAÇÃO: ${perguntaTexto}\n\nDADOS DO PROJETO (JSON OTIMIZADO):\n${JSON.stringify(projetoLimpo)}` }]
-            }],
-            generationConfig: { temperature: 0.2 }
-          };
-
-          notify("Enviando pacote reduzido para a Google...");
-
-          const response = await fetch(geminiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
+          paragrafos.forEach(p => {
+             const pNorm = p.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+             if (termosBusca.some(t => pNorm.includes(t))) {
+                 trechosUteis.push(p.trim());
+             }
           });
 
-          if (!response.ok) {
-            const errorDetails = await response.json().catch(() => ({}));
-            const googleError = errorDetails.error?.message || response.statusText || 'Erro desconhecido';
-            throw new Error(`Google API: ${googleError}`);
-          }
+          let conteudoFinal = trechosUteis.length > 0 
+            ? trechosUteis.join(' [...] ').substring(0, 2000) 
+            : textoOriginal.substring(0, 500) + " [Trecho inicial. Resto omitido por não ter match direto com a pergunta].";
 
-          const data = await response.json();
-          currentIaReportText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Nenhuma análise pôde ser formulada.';
-          currentIaReportQuery = perguntaTexto;
+          return { nome: f.name, trechos_do_texto: conteudoFinal };
+        }).filter(f => f !== null);
 
-          iaResponseBox.style.display = 'block';
-          iaResponseBox.innerHTML = `
-            <div style="display: flex; gap: 8px; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 15px;">
-               <span style="font-size: 1.2rem;">🔬</span>
-               <strong style="color: var(--primary-dark);">Relatório Analítico Metodológico:</strong>
-            </div>
-            ${renderIaMarkdown(currentIaReportText)}
-            <div style="margin-top: 20px; text-align: right; border-top: 1px solid var(--border); padding-top: 15px;">
-               <button id="ia-save-btn" class="success" style="padding: 0.8rem 1.5rem; font-size: 1rem;">💾 Salvar Relatório no Projeto</button>
-            </div>
-          `;
+        const projetoLimpo = {
+          fontes_filtradas: fontesOtimizadas,
+          codigos: state.codes,
+          cases: state.cases,
+          memos: state.memos
+        };
 
-          document.getElementById('ia-save-btn').addEventListener('click', () => {
-             if(!state.ia_reports) state.ia_reports = [];
-             state.ia_reports.unshift({ query: currentIaReportQuery, content: currentIaReportText, date: new Date().toLocaleString("pt-BR") });
-             saveLocal().then(() => {
-                 renderIaHistory();
-                 notify("Relatório salvo no histórico da IA.");
-                 document.getElementById('ia-save-btn').style.display = 'none';
-             }).catch(() => notify("Erro ao salvar.", true));
-          });
+        const requestBody = {
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{
+              role: "user",
+              parts: [{ text: `DIRETRIZ DA INVESTIGAÇÃO: ${perguntaTexto}\n\nDADOS DO PROJETO (JSON OTIMIZADO):\n${JSON.stringify(projetoLimpo)}` }]
+          }],
+          generationConfig: { temperature: 0.2 }
+        };
 
-          notify("Relatório Qualitativo Sênior gerado com sucesso.");
+        notify("Enviando pacote reduzido para a Google...");
 
-        } catch (err) {
-          console.error("[Front-end LLM Error]:", err);
-          notify("Ocorreu um erro no tráfego da API.", true);
-          iaResponseBox.style.display = 'block';
-          iaResponseBox.innerHTML = `<span style="color: var(--danger);"><strong>Erro de Conexão:</strong> ${escapeHtml(err.message)}</span>`;
-        } finally {
-          iaBtnSend.disabled = false;
-          iaBtnSend.innerText = 'Disparar Análise Sênior';
+        const response = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          const errorDetails = await response.json().catch(() => ({}));
+          const googleError = errorDetails.error?.message || response.statusText || 'Erro desconhecido';
+          throw new Error(`Google API: ${googleError}`);
         }
-      });
+
+        const data = await response.json();
+        currentIaReportText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Nenhuma análise pôde ser formulada.';
+        currentIaReportQuery = perguntaTexto;
+
+        iaResponseBox.style.display = 'block';
+        iaResponseBox.innerHTML = `
+          <div style="display: flex; gap: 8px; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 15px;">
+             <span style="font-size: 1.2rem;">🔬</span>
+             <strong style="color: var(--primary-dark);">Relatório Analítico Metodológico:</strong>
+          </div>
+          ${renderIaMarkdown(currentIaReportText)}
+          <div style="margin-top: 20px; text-align: right; border-top: 1px solid var(--border); padding-top: 15px;">
+             <button id="ia-save-btn" class="success" style="padding: 0.8rem 1.5rem; font-size: 1rem;">💾 Salvar Relatório no Projeto</button>
+          </div>
+        `;
+
+        document.getElementById('ia-save-btn').addEventListener('click', () => {
+           if(!state.ia_reports) state.ia_reports = [];
+           state.ia_reports.unshift({ query: currentIaReportQuery, content: currentIaReportText, date: new Date().toLocaleString("pt-BR") });
+           saveLocal().then(() => {
+               renderIaHistory();
+               notify("Relatório salvo no histórico da IA.");
+               document.getElementById('ia-save-btn').style.display = 'none';
+           }).catch(() => notify("Erro ao salvar.", true));
+        });
+
+        notify("Relatório Qualitativo Sênior gerado com sucesso.");
+
+      } catch (err) {
+        console.error("[Front-end LLM Error]:", err);
+        notify("Ocorreu um erro no tráfego da API.", true);
+        iaResponseBox.style.display = 'block';
+        iaResponseBox.innerHTML = `<span style="color: var(--danger);"><strong>Erro de Conexão:</strong> ${escapeHtml(err.message)}</span>`;
+      } finally {
+        iaBtnSend.disabled = false;
+        iaBtnSend.innerText = 'Disparar Análise Sênior';
+      }
+    });
   }
 }
 
