@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#1f6feb">
-  <title>Curso&Numeração Offline</title>
+  <title>Curso & Numeração Offline</title>
 
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="logo.png">
@@ -820,7 +820,6 @@ function initCrypto() {
     else { if(hash.toString() === storedHash) { modal.style.display = "none"; } else { notify("Senha incorreta!", true); } }
   });
 
-  // Listener para poder entrar apertando o 'Enter' direto no campo de texto
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -831,7 +830,7 @@ function initCrypto() {
 
 async function verifyPasswordAction() {
   const storedHash = localStorage.getItem("cn_crypto_hash"); if (!storedHash) return true;
-  const val = prompt("Ação restrita (Exportação/Criptografia). Digite a senha:");
+  const val = prompt("Ação restrita (Exclusão). Digite a senha:");
   if (val === null) return false;
   let hash = 0; for (let i = 0; i < val.length; i++) { hash = ((hash << 5) - hash) + val.charCodeAt(i); hash |= 0; }
   if (hash.toString() === storedHash) return true;
@@ -1096,7 +1095,6 @@ async function runSuperAnalysis() {
 
     let attrFreq = {}; 
     
-    // LINHA CORRIGIDA - o erro de sintaxe que travava o aplicativo estava aqui (faltava fechar o parênteses principal).
     state.cases.forEach(c => Object.keys(c.attributes).forEach(k => { let kV = `${k}: ${c.attributes[k]}`; attrFreq[kV] = (attrFreq[kV]||0)+1; }));
     
     superAnalysisData.ponto3 = attrFreq;
@@ -1321,8 +1319,6 @@ function initNavigation() {
 }
 
 async function generateHyperReport() {
-  if (!(await verifyPasswordAction())) return;
-
   $("hyperReportModal").style.display = "none";
   const checks = Array.from(document.querySelectorAll(".hr-check:checked")).map(el => el.value);
   if(checks.length === 0) return notify("Nenhuma aba selecionada para o relatório", true);
@@ -1438,7 +1434,6 @@ function initEvents() {
   $("cancelOnlineBtn").addEventListener("click", () => { $("onlinePreviewBox").style.display = "none"; $("onlineUrl").value = ""; });
 
   $("saveBtn").addEventListener("click", async () => {
-    if (!(await verifyPasswordAction())) return;
     runWithProgress("Salvando Estrutura", 50, async () => {
       state.settings.projectName = $("projectName").value.trim() || "Projeto Sem Nome";
       state.settings.projectColor = $("projectThemeColor").value;
@@ -1460,7 +1455,7 @@ function initEvents() {
   $("closeHyperReportBtn").addEventListener("click", () => $("hyperReportModal").style.display = "none");
   $("executeHyperReportBtn").addEventListener("click", generateHyperReport);
 
-  $("importDataBtn").addEventListener("click", async () => { if (!(await verifyPasswordAction())) return; $("importDataFile").click(); });
+  $("importDataBtn").addEventListener("click", async () => { $("importDataFile").click(); });
   $("importDataFile").addEventListener("change", async (e) => {
     const file = e.target.files[0]; if (!file) return;
     runWithProgress("Importando Conjunto de Dados", 10, async () => {
@@ -1501,7 +1496,6 @@ function initEvents() {
   });
 
   $("saveSettingsBtn").addEventListener("click", async () => {
-    if (!(await verifyPasswordAction())) return;
     state.settings.projectName = $("projectName").value.trim() || "Curso & Numeração Offline";
     state.settings.maxPreview = Math.max(100, Number($("maxPreview").value) || 8000);
     state.settings.projectColor = $("projectThemeColor").value;
@@ -1587,7 +1581,6 @@ function initEvents() {
 
       const systemPrompt = `Você é um Analista de Dados Qualitativos Sênior. Responda à diretriz do usuário usando os metadados (Cases e Códigos) e os trechos filtrados das fontes. Estruture a resposta em Markdown. Não invente dados.`;
 
-      // RAG (Buscador Semântico) direto no Navegador
       const termosBusca = perguntaTexto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/\W+/).filter(w => w.length > 3);
 
       const fontesOtimizadas = state.files.map(f => {
