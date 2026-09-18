@@ -803,13 +803,29 @@ function addActivity(message) {
 function initCrypto() {
   const storedHash = localStorage.getItem("cn_crypto_hash");
   const modal = $("cryptoModal"); const btn = $("cryptoBtn"); const input = $("cryptoInput");
-  if(storedHash) { $("cryptoTitle").textContent = "Acesso Seguro"; $("cryptoDesc").textContent = "Insira sua senha para descriptografar a sessão."; }
-  else { $("cryptoTitle").textContent = "Criptografia Inicial"; $("cryptoDesc").textContent = "Crie uma senha. Ela será exigida para abrir o aplicativo."; btn.textContent = "Criar Senha e Entrar"; }
+  
+  if(storedHash) { 
+    $("cryptoTitle").textContent = "Acesso Seguro"; 
+    $("cryptoDesc").textContent = "Insira sua senha para descriptografar a sessão."; 
+  } else { 
+    $("cryptoTitle").textContent = "Criptografia Inicial"; 
+    $("cryptoDesc").textContent = "Crie uma senha. Ela será exigida para abrir o aplicativo."; 
+    btn.textContent = "Criar Senha e Entrar"; 
+  }
+  
   btn.addEventListener("click", () => {
     const val = input.value.trim(); if(!val) return notify("Digite a senha!", true);
     let hash = 0; for (let i = 0; i < val.length; i++) { hash = ((hash << 5) - hash) + val.charCodeAt(i); hash |= 0; }
     if(!storedHash) { localStorage.setItem("cn_crypto_hash", hash); modal.style.display = "none"; notify("Criptografia configurada."); }
     else { if(hash.toString() === storedHash) { modal.style.display = "none"; } else { notify("Senha incorreta!", true); } }
+  });
+
+  // Listener para poder entrar apertando o 'Enter' direto no campo de texto
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      btn.click();
+    }
   });
 }
 
@@ -1078,7 +1094,11 @@ async function runSuperAnalysis() {
       return `<div class="result case-card"><strong>Case: ${escapeHtml(c.name)}</strong><ul style="margin:0; padding-left:20px; font-size:0.9rem;">${rH}</ul></div>`;
     }).join("");
 
-    let attrFreq = {}; state.cases.forEach(c => Object.keys(c.attributes).forEach(k => { let kV = `${k}: ${c.attributes[k]}`; attrFreq[kV] = (attrFreq[kV]||0)+1; });
+    let attrFreq = {}; 
+    
+    // LINHA CORRIGIDA - o erro de sintaxe que travava o aplicativo estava aqui (faltava fechar o parênteses principal).
+    state.cases.forEach(c => Object.keys(c.attributes).forEach(k => { let kV = `${k}: ${c.attributes[k]}`; attrFreq[kV] = (attrFreq[kV]||0)+1; }));
+    
     superAnalysisData.ponto3 = attrFreq;
     let p3H = `<div class="table-wrap"><table><thead><tr><th>Atributo e Valor</th><th>Frequência</th></tr></thead><tbody>`;
     Object.keys(attrFreq).sort((a,b) => attrFreq[b]-attrFreq[a]).forEach(k => p3H += `<tr><td>${escapeHtml(k)}</td><td>${attrFreq[k]}</td></tr>`);
@@ -1561,7 +1581,7 @@ function initEvents() {
     iaResponseBox.style.display = 'none';
 
     try {
-      notify("Otimizando as 39 mil palavras (RAG Local)...");
+      notify("Otimizando as palavras-chave (RAG Local)...");
       
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
@@ -1627,7 +1647,6 @@ function initEvents() {
       const data = await response.json();
       const textoResposta = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Nenhuma análise pôde ser formulada pelos dados fornecidos.';
 
-      // AQUI ENTRA A MODIFICAÇÃO SOLICITADA PARA SALVAR O MEMO
       iaResponseBox.style.display = 'block';
       iaResponseBox.innerHTML = `
         <div style="display: flex; gap: 8px; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 15px;">
